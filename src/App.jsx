@@ -398,12 +398,15 @@ function GameBoard({ onGameOver }) {
 }
 
 function Hud({ score, timeLeft, lives, combo }) {
+  const shownTime = Math.ceil(timeLeft);
+  const timerMood = shownTime <= 5 ? 'timer-critical' : shownTime <= 10 ? 'timer-warning' : '';
+
   return (
     <div className="hud">
-      <Stat label="Score" value={score.toString().padStart(4, '0')} />
-      <Stat label="Timer" value={`${Math.ceil(timeLeft)}s`} />
-      <Stat label="Lives" value={'❤️'.repeat(Math.max(lives, 0)) || '💔'} />
-      <Stat label="Combo" value={combo > 1 ? `x${combo}` : '—'} />
+      <Stat label="Sugar Score" value={score.toString().padStart(4, '0')} />
+      <Stat label="Rush Clock" value={`${shownTime}s`} className={`timer-card ${timerMood}`} pulseKey={shownTime} />
+      <Stat label="Snack Hearts" value={'❤️'.repeat(Math.max(lives, 0)) || '💔'} />
+      <Stat label="Combo Pop" value={combo > 1 ? `x${combo}` : '—'} />
     </div>
   );
 }
@@ -458,11 +461,11 @@ function AbilityCard({ name, keyName, detail, active, cooldown, value, variant }
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, className = '', pulseKey }) {
   return (
-    <div className="stat-card">
+    <div className={`stat-card ${className}`}>
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong key={pulseKey ?? value}>{value}</strong>
     </div>
   );
 }

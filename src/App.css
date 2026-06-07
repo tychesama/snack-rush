@@ -184,6 +184,47 @@ h1 {
   background: linear-gradient(180deg, #ffffff, #fff2a6);
 }
 
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  transform: rotate(-1deg);
+  border-width: 5px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 14% 20%, rgba(255, 255, 255, 0.95) 0 14px, transparent 15px),
+    linear-gradient(160deg, #ffffff 0%, #fff46b 48%, #ffb000 100%);
+  box-shadow: 0 10px 0 #2b1239, 0 16px 22px rgba(43, 18, 57, 0.25);
+}
+
+.stat-card:nth-child(even) {
+  transform: rotate(1deg);
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.95) 0 14px, transparent 15px),
+    linear-gradient(160deg, #ffffff 0%, #bffaff 48%, #31d6ff 100%);
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: -45% -20% auto auto;
+  width: 68%;
+  height: 130%;
+  background: rgba(255, 255, 255, 0.33);
+  transform: rotate(22deg);
+  pointer-events: none;
+}
+
+.stat-card::after {
+  content: "✦";
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  color: #ff2f91;
+  font-size: 1.1rem;
+  text-shadow: 2px 2px 0 #2b1239;
+  pointer-events: none;
+}
+
 .ability-card {
   position: relative;
   overflow: hidden;
@@ -247,6 +288,8 @@ h1 {
 .stat-card span,
 .ability-card span,
 .score-summary span {
+  position: relative;
+  z-index: 1;
   color: #7a2ee8;
   font-size: 0.78rem;
   font-weight: 950;
@@ -255,8 +298,48 @@ h1 {
 }
 
 .stat-card strong {
-  font-size: clamp(1.1rem, 2.7vw, 1.8rem);
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  font-size: clamp(1.3rem, 3vw, 2rem);
   line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.8), 4px 4px 0 rgba(43, 18, 57, 0.18);
+}
+
+.stat-card.timer-card {
+  transform: rotate(0deg) scale(1.04);
+}
+
+.stat-card.timer-warning {
+  color: #fff;
+  border-color: #2b1239;
+  background:
+    radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.75) 0 16px, transparent 17px),
+    linear-gradient(145deg, #ffb000 0%, #ff5bbd 58%, #ff2f64 100%);
+  animation: timerCardWarning 700ms ease-in-out infinite alternate;
+}
+
+.stat-card.timer-warning span,
+.stat-card.timer-warning strong {
+  color: #fff;
+  text-shadow: 3px 3px 0 #2b1239, 0 0 18px rgba(255, 244, 107, 0.95);
+}
+
+.stat-card.timer-warning strong {
+  animation: timerNumberPop 420ms cubic-bezier(.2, 1.8, .4, 1) both;
+}
+
+.stat-card.timer-critical {
+  background:
+    radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.8) 0 16px, transparent 17px),
+    linear-gradient(145deg, #ff003d 0%, #ff2f91 48%, #7a2ee8 100%);
+  animation: timerCardCritical 340ms ease-in-out infinite alternate;
+}
+
+.stat-card.timer-critical strong {
+  color: #fff46b;
+  animation: timerNumberPanic 340ms cubic-bezier(.2, 1.9, .4, 1) both;
 }
 
 .ability-card strong {
@@ -303,14 +386,18 @@ h1 {
 
 .shop-awning {
   position: absolute;
+  z-index: 8;
   inset: 0 0 auto;
   height: 52px;
   background: repeating-linear-gradient(90deg, #ff2f64 0 44px, #fff8c7 44px 88px, #31d6ff 88px 132px);
   border-bottom: 7px solid #2b1239;
+  box-shadow: 0 8px 0 rgba(43, 18, 57, 0.18);
+  pointer-events: none;
 }
 
 .conveyor-label {
   position: absolute;
+  z-index: 9;
   top: 68px;
   left: 22px;
   padding: 8px 16px;
@@ -318,10 +405,11 @@ h1 {
   border-radius: 999px;
   color: #fff;
   background: #7a2ee8;
-  box-shadow: 0 5px 0 #2b1239;
+  box-shadow: 0 5px 0 #2b1239, 0 0 0 4px rgba(255, 244, 107, 0.55);
   font-size: 0.85rem;
   font-weight: 950;
   letter-spacing: 0.1em;
+  pointer-events: none;
 }
 
 .falling-snack {
@@ -530,6 +618,28 @@ h1 {
 @keyframes abilityGlow {
   from { box-shadow: 0 7px 0 #2b1239, 0 0 0 rgba(255, 255, 255, 0); }
   to { box-shadow: 0 7px 0 #2b1239, 0 0 26px rgba(255, 244, 107, 0.9); }
+}
+
+@keyframes timerCardWarning {
+  from { transform: rotate(-1deg) scale(1.04); }
+  to { transform: rotate(1deg) scale(1.11); }
+}
+
+@keyframes timerCardCritical {
+  from { transform: rotate(-2deg) scale(1.08); box-shadow: 0 10px 0 #2b1239, 0 0 18px rgba(255, 47, 100, 0.8); }
+  to { transform: rotate(2deg) scale(1.18); box-shadow: 0 10px 0 #2b1239, 0 0 34px rgba(255, 244, 107, 0.95); }
+}
+
+@keyframes timerNumberPop {
+  0% { transform: scale(0.72) rotate(-5deg); }
+  65% { transform: scale(1.35) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes timerNumberPanic {
+  0% { transform: scale(0.62) rotate(-9deg); }
+  65% { transform: scale(1.58) rotate(7deg); }
+  100% { transform: scale(1.08) rotate(0deg); }
 }
 
 @media (max-width: 1020px) {
