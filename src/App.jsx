@@ -12,11 +12,12 @@ const SPEEDUP_MULTIPLIER = 1.65;
 const ABILITY_DURATION = 5;
 const ABILITY_COOLDOWN = 10;
 const BASKET_BOTTOM_OFFSET = 18;
-const CATCH_ZONE_INSET_X = 3;
+const CATCH_ZONE_INSET_X = 9;
 const CATCH_ZONE_WIDTH = BASKET_WIDTH - CATCH_ZONE_INSET_X * 2;
-const CATCH_ZONE_HEIGHT = 24;
+const CATCH_ZONE_HEIGHT = 18;
 const CATCH_ZONE_OFFSET_X = CATCH_ZONE_INSET_X;
-const CATCH_ZONE_TOP = GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT;
+const CATCH_ZONE_OFFSET_Y = 4;
+const CATCH_ZONE_TOP = GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT + CATCH_ZONE_OFFSET_Y;
 const CATCH_ZONE_BOTTOM = CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT;
 const MAX_FALL_DRIFT = 28;
 
@@ -510,11 +511,9 @@ function Basket({ x, evading, speeding }) {
       <div className="invincible-shield" />
       <div className="invincible-stars" />
       <div className="basket-shadow" />
-      <div className="basket-handle" />
-      <div className="basket-rim" />
+      <div className="basket-rim"><span className="basket-emoji">😋</span></div>
       <div className="basket-body">
         <div className="basket-weave" />
-        <div className="basket-badge">😋</div>
       </div>
     </div>
   );
