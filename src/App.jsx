@@ -5,6 +5,9 @@ const GAME_HEIGHT = 560;
 const BASKET_WIDTH = 108;
 const BASKET_HEIGHT = 58;
 const ITEM_SIZE = 44;
+const ITEM_HITBOX_INSET_X = 7;
+const ITEM_HITBOX_TOP_INSET = 6;
+const ITEM_HITBOX_BOTTOM_INSET = 7;
 const GAME_SECONDS = 45;
 const STARTING_LIVES = 3;
 const PLAYER_SPEED = 520;
@@ -90,15 +93,33 @@ function getSweptCatchZone(basketX, previousBasketX = basketX) {
   };
 }
 
+function getItemHitbox(item) {
+  return {
+    left: item.x + ITEM_HITBOX_INSET_X,
+    right: item.x + ITEM_SIZE - ITEM_HITBOX_INSET_X,
+    top: item.y + ITEM_HITBOX_TOP_INSET,
+    bottom: item.y + ITEM_SIZE - ITEM_HITBOX_BOTTOM_INSET,
+  };
+}
+
+function getSweptItemHitbox(item, updated) {
+  const previous = getItemHitbox(item);
+  const current = getItemHitbox(updated);
+
+  return {
+    left: Math.min(previous.left, current.left),
+    right: Math.max(previous.right, current.right),
+    top: Math.min(previous.top, current.top),
+    bottom: Math.max(previous.bottom, current.bottom),
+  };
+}
+
 function basketCatchesItem(item, updated, basketX, previousBasketX = basketX) {
   const catchZone = getSweptCatchZone(basketX, previousBasketX);
-  const itemSweptLeft = Math.min(item.x, updated.x);
-  const itemSweptRight = Math.max(item.x + ITEM_SIZE, updated.x + ITEM_SIZE);
-  const itemSweptTop = Math.min(item.y, updated.y);
-  const itemSweptBottom = Math.max(item.y + ITEM_SIZE, updated.y + ITEM_SIZE);
+  const itemHitbox = getSweptItemHitbox(item, updated);
 
-  const horizontallyTouchesCatchZone = itemSweptRight >= catchZone.left && itemSweptLeft <= catchZone.right;
-  const verticallyTouchesCatchZone = itemSweptBottom >= catchZone.top && itemSweptTop <= catchZone.bottom;
+  const horizontallyTouchesCatchZone = itemHitbox.right >= catchZone.left && itemHitbox.left <= catchZone.right;
+  const verticallyTouchesCatchZone = itemHitbox.bottom >= catchZone.top && itemHitbox.top <= catchZone.bottom;
 
   return horizontallyTouchesCatchZone && verticallyTouchesCatchZone;
 }
