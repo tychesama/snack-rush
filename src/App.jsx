@@ -29,6 +29,15 @@ const GOOD_SNACKS = ['🍩', '🧁', '🍪', '🍭', '🍫', '🍬', '🥨', '�
 const BAD_SNACKS = ['☠️', '🤮', '🦠', '💀'];
 const POWER_SNACKS = ['⭐', '💎'];
 const CONFETTI_COLORS = ['#ff2f91', '#ffb000', '#31d6ff', '#7a2ee8', '#69ff9f', '#fff46b'];
+const LEADERBOARD_KEY = 'snackrush-local-leaderboard-v1';
+const LEADERBOARD_LIMIT = 5;
+const DEFAULT_LEADERBOARD = [
+  { id: 'default-1', name: 'Tyche', score: 520, caught: 38, tag: 'Candy Queen' },
+  { id: 'default-2', name: 'Gummy Goblin', score: 430, caught: 32, tag: 'Sticky Fingers' },
+  { id: 'default-3', name: 'Donut Dash', score: 320, caught: 25, tag: 'Glaze Blazer' },
+  { id: 'default-4', name: 'Cookie Kid', score: 235, caught: 19, tag: 'Crumb Runner' },
+  { id: 'default-5', name: 'Rookie Rush', score: 145, caught: 12, tag: 'First Bite' },
+];
 
 const freshItem = (id) => {
   const roll = Math.random();
@@ -71,6 +80,68 @@ const makeConfettiBurst = (x, y, startId) =>
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function sortLeaderboard(entries) {
+  const uniqueEntries = new Map();
+
+  for (const entry of entries) {
+    if (!Number.isFinite(entry.score)) continue;
+    const existing = uniqueEntries.get(entry.id);
+    if (!existing || entry.score > existing.score || (entry.score === existing.score && entry.caught > existing.caught)) {
+      uniqueEntries.set(entry.id, entry);
+    }
+  }
+
+  return [...uniqueEntries.values()]
+    .sort((a, b) => b.score - a.score || b.caught - a.caught)
+    .slice(0, LEADERBOARD_LIMIT);
+}
+
+function normalizeLeaderboardEntry(entry, fallbackIndex = 0) {
+  return {
+    id: String(entry.id || `local-${fallbackIndex}`),
+    name: String(entry.name || 'Mystery Muncher').slice(0, 18),
+    score: Math.max(0, Math.floor(Number(entry.score) || 0)),
+    caught: Math.max(0, Math.floor(Number(entry.caught) || 0)),
+    tag: String(entry.tag || 'Local Hero').slice(0, 24),
+    isPlayer: Boolean(entry.isPlayer),
+  };
+}
+
+function loadLeaderboard() {
+  if (typeof window === 'undefined') return DEFAULT_LEADERBOARD;
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(LEADERBOARD_KEY) || '[]');
+    const savedEntries = Array.isArray(saved) ? saved.map(normalizeLeaderboardEntry) : [];
+    return sortLeaderboard([...savedEntries, ...DEFAULT_LEADERBOARD]);
+  } catch {
+    return DEFAULT_LEADERBOARD;
+  }
+}
+
+function saveLeaderboard(entries) {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
+}
+
+function addLeaderboardScore(stats, currentEntries) {
+  const entryId = `player-${Date.now()}`;
+  const playerEntry = {
+    id: entryId,
+    name: 'You',
+    score: Math.max(0, Math.floor(stats.score || 0)),
+    caught: Math.max(0, Math.floor(stats.caught || 0)),
+    tag: stats.score >= DEFAULT_LEADERBOARD[0].score ? 'Top Snack Boss' : 'Local Challenger',
+    isPlayer: true,
+  };
+  const leaderboard = sortLeaderboard([...currentEntries, playerEntry]);
+  const rank = leaderboard.findIndex((entry) => entry.id === entryId);
+  saveLeaderboard(leaderboard);
+
+  return { leaderboard, rank: rank === -1 ? null : rank + 1 };
 }
 
 function getCatchZone(basketX) {
@@ -128,7 +199,8 @@ function basketCatchesItem(item, updated, basketX, previousBasketX = basketX) {
 function App() {
   const [screen, setScreen] = useState('start');
   const [gameKey, setGameKey] = useState(0);
-  const [finalStats, setFinalStats] = useState({ score: 0, caught: 0, reason: 'Ready?' });
+  const [leaderboard, setLeaderboard] = useState(loadLeaderboard);
+  const [finalStats, setFinalStats] = useState({ score: 0, caught: 0, reason: 'Ready?', leaderboard, leaderboardRank: null });
 
   const startGame = () => {
     setGameKey((key) => key + 1);
@@ -136,7 +208,9 @@ function App() {
   };
   const showMainMenu = () => setScreen('start');
   const endGame = (stats) => {
-    setFinalStats(stats);
+    const result = addLeaderboardScore(stats, leaderboard);
+    setLeaderboard(result.leaderboard);
+    setFinalStats({ ...stats, leaderboard: result.leaderboard, leaderboardRank: result.rank });
     setScreen('gameover');
   };
 
@@ -146,28 +220,40 @@ function App() {
       <div className="candy-cloud cloud-two">🍭</div>
       <div className="candy-cloud cloud-three">🍩</div>
 
-      {screen === 'start' && <StartScreen onStart={startGame} />}
+      {screen === 'start' && <StartScreen onStart={startGame} leaderboard={leaderboard} />}
       {screen === 'playing' && <GameBoard key={gameKey} onGameOver={endGame} onMainMenu={showMainMenu} onRestart={startGame} />}
-      {screen === 'gameover' && <GameOverScreen stats={finalStats} onRestart={startGame} />}
+      {screen === 'gameover' && <GameOverScreen stats={finalStats} leaderboard={leaderboard} onRestart={startGame} onMainMenu={showMainMenu} />}
     </main>
   );
 }
 
-function StartScreen({ onStart }) {
+function StartScreen({ onStart, leaderboard }) {
   return (
-    <section className="panel start-panel">
-      <p className="eyebrow">Candy shop chaos presents</p>
-      <h1>SnackRush</h1>
-      <p className="tagline">Catch the sweet stuff. Go invincible through suspicious stuff. Keep the basket moving!</p>
-      <div className="how-to-play">
-        <div><strong>Move:</strong> ← → or A / D</div>
-        <div><strong>Pause:</strong> Esc opens the snack menu</div>
-        <div><strong>Boost:</strong> press Z — 5s speed boost, 10s cooldown</div>
-        <div><strong>Invincibility:</strong> press X — 5s safety, 10s cooldown</div>
-        <div><strong>Catch:</strong> 🍩 🍪 🍭 ⭐</div>
-        <div><strong>Avoid:</strong> ☠️ 🤮 🦠 💀 bad food</div>
+    <section className="panel start-panel pop-panel">
+      <div className="menu-sparkle sparkle-left" aria-hidden="true">✦</div>
+      <div className="menu-sparkle sparkle-right" aria-hidden="true">✦</div>
+      <p className="eyebrow hero-eyebrow">TYCHE CANDY SHOP PRESENTS</p>
+      <div className="title-stack" aria-label="SnackRush">
+        <span className="title-candy" aria-hidden="true">🍬</span>
+        <h1>SnackRush</h1>
+        <span className="title-candy" aria-hidden="true">🍭</span>
       </div>
-      <button className="primary-button" onClick={onStart}>Start Rush!</button>
+      <p className="tagline hero-tagline">Catch the sweet stuff. Power through suspicious snacks. Survive the candy shop chaos!</p>
+      <div className="snack-marquee" aria-hidden="true">
+        <span>🍩</span><span>🍪</span><span>🍭</span><span>⭐</span><span>☠️</span><span>🤮</span>
+      </div>
+      <div className="menu-layout">
+        <div className="how-to-play menu-card-grid">
+          <div><strong>Move</strong><span>← → or A / D</span></div>
+          <div><strong>Pause</strong><span>Esc opens the snack menu</span></div>
+          <div><strong>Boost</strong><span>Z — 5s speed burst</span></div>
+          <div><strong>Invincibility</strong><span>X — 5s safety shield</span></div>
+          <div><strong>Catch</strong><span>🍩 🍪 🍭 ⭐</span></div>
+          <div><strong>Avoid</strong><span>☠️ 🤮 🦠 💀 bad food</span></div>
+        </div>
+        <Leaderboard entries={leaderboard} title="Local leaderboard" subtitle={`Beat ${leaderboard[0]?.name || 'Tyche'} at ${leaderboard[0]?.score || 0}!`} />
+      </div>
+      <button className="primary-button jumbo-button" onClick={onStart}>Start Rush!</button>
     </section>
   );
 }
@@ -659,14 +745,52 @@ function Basket({ x, evading, speeding, movementDirection }) {
   );
 }
 
-function GameOverScreen({ stats, onRestart }) {
+function Leaderboard({ entries, title = 'Leaderboard', subtitle = 'Local scores only', highlightRank = null }) {
+  return (
+    <aside className="leaderboard-card" aria-label={title}>
+      <div className="leaderboard-header">
+        <span className="leaderboard-crown" aria-hidden="true">🏆</span>
+        <div>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+      <ol className="leaderboard-list">
+        {entries.map((entry, index) => (
+          <li key={entry.id} className={`${entry.isPlayer ? 'player-score' : ''} ${highlightRank === index + 1 ? 'new-score' : ''}`}>
+            <span className="leaderboard-rank">#{index + 1}</span>
+            <span className="leaderboard-name">
+              {entry.name}
+              <small>{entry.tag}</small>
+            </span>
+            <span className="leaderboard-score">
+              {entry.score}
+              <small>{entry.caught} caught</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+}
+
+function GameOverScreen({ stats, leaderboard, onRestart, onMainMenu }) {
   const title = stats.score >= 350 ? 'Sugar Legend!' : stats.score >= 180 ? 'Snack Champ!' : 'Rush Over!';
+  const medal = stats.score >= 350 ? '🏆' : stats.score >= 180 ? '🎖️' : '🍬';
+  const board = stats.leaderboard || leaderboard;
+  const leaderboardSubtitle = stats.leaderboardRank
+    ? `New local rank #${stats.leaderboardRank}!`
+    : `Beat #1: ${board[0]?.score || 0} points`;
 
   return (
-    <section className="panel gameover-panel">
-      <p className="eyebrow">{stats.reason}</p>
-      <h1>{title}</h1>
-      <div className="score-summary">
+    <section className="panel gameover-panel pop-panel">
+      <div className="menu-sparkle sparkle-left" aria-hidden="true">✦</div>
+      <div className="menu-sparkle sparkle-right" aria-hidden="true">✦</div>
+      <p className="eyebrow hero-eyebrow">{stats.reason}</p>
+      <div className="result-badge" aria-hidden="true">{medal}</div>
+      <h1 className="gameover-title">{title}</h1>
+      <p className="tagline result-tagline">The candy counter is closed. Count your loot, dodge the stink, and rush again!</p>
+      <div className="score-summary result-grid">
         <div>
           <span>Final Score</span>
           <strong>{stats.score}</strong>
@@ -676,7 +800,11 @@ function GameOverScreen({ stats, onRestart }) {
           <strong>{stats.caught}</strong>
         </div>
       </div>
-      <button className="primary-button" onClick={onRestart}>Play Again</button>
+      <Leaderboard entries={board} title="Local leaderboard" subtitle={leaderboardSubtitle} highlightRank={stats.leaderboardRank} />
+      <div className="gameover-actions">
+        <button className="primary-button jumbo-button" onClick={onRestart}>Play Again</button>
+        <button className="secondary-button" onClick={onMainMenu}>Main Menu</button>
+      </div>
     </section>
   );
 }

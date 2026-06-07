@@ -33,4 +33,11 @@ assert(css.includes('.debug-hitbox.catch-zone'), 'catch-zone hitbox style should
 assert(css.includes('.debug-hitbox.item-hitbox'), 'item hitbox style should exist');
 assert(css.includes('.debug-hitbox.sprite-box'), 'sprite-box hitbox style should exist');
 
+assert(app.includes('snackrush-local-leaderboard-v1'), 'leaderboard should persist to localStorage with a stable key');
+assert(app.includes('DEFAULT_LEADERBOARD'), 'leaderboard should include default scores to beat');
+assert(app.includes('function Leaderboard'), 'leaderboard component should exist');
+assert(app.includes('addLeaderboardScore'), 'game over should record local leaderboard scores');
+assert(css.includes('.leaderboard-card'), 'leaderboard card styles should exist');
+assert(css.includes('.leaderboard-list'), 'leaderboard row styles should exist');
+
 console.log('source contract checks passed');
