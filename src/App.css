@@ -502,10 +502,10 @@ h1 {
 .basket-rim {
   position: absolute;
   z-index: 4;
-  left: 9px;
-  top: 4px;
-  width: 90px;
-  height: 18px;
+  left: 5px;
+  top: 1px;
+  width: 98px;
+  height: 22px;
   display: grid;
   place-items: center;
   border: 3px solid #2b1239;
@@ -532,9 +532,9 @@ h1 {
   z-index: 1;
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 14px;
-  font-size: 0.95rem;
+  width: 22px;
+  height: 12px;
+  font-size: 0.72rem;
   line-height: 1;
   transform: translateY(-1px);
   filter: drop-shadow(1px 1px 0 rgba(43, 18, 57, 0.32));
@@ -545,8 +545,8 @@ h1 {
   z-index: 3;
   left: 12px;
   right: 12px;
-  top: 16px;
-  height: 39px;
+  top: 19px;
+  height: 36px;
   overflow: hidden;
   border: 3px solid #2b1239;
   border-top: 0;

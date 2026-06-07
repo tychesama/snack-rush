@@ -12,11 +12,11 @@ const SPEEDUP_MULTIPLIER = 1.65;
 const ABILITY_DURATION = 5;
 const ABILITY_COOLDOWN = 10;
 const BASKET_BOTTOM_OFFSET = 18;
-const CATCH_ZONE_INSET_X = 9;
+const CATCH_ZONE_INSET_X = 5;
 const CATCH_ZONE_WIDTH = BASKET_WIDTH - CATCH_ZONE_INSET_X * 2;
-const CATCH_ZONE_HEIGHT = 18;
+const CATCH_ZONE_HEIGHT = 22;
 const CATCH_ZONE_OFFSET_X = CATCH_ZONE_INSET_X;
-const CATCH_ZONE_OFFSET_Y = 4;
+const CATCH_ZONE_OFFSET_Y = 1;
 const CATCH_ZONE_TOP = GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT + CATCH_ZONE_OFFSET_Y;
 const CATCH_ZONE_BOTTOM = CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT;
 const MAX_FALL_DRIFT = 28;
@@ -78,19 +78,29 @@ function getCatchZone(basketX) {
   };
 }
 
-function basketCatchesItem(item, updated, basketX) {
-  const catchZone = getCatchZone(basketX);
-  const itemLeft = updated.x;
-  const itemRight = updated.x + ITEM_SIZE;
-  const itemTop = updated.y;
-  const itemBottom = updated.y + ITEM_SIZE;
-  const previousBottom = item.y + ITEM_SIZE;
+function getSweptCatchZone(basketX, previousBasketX = basketX) {
+  const current = getCatchZone(basketX);
+  const previous = getCatchZone(previousBasketX);
 
-  const horizontallyTouchesCatchZone = itemRight >= catchZone.left && itemLeft <= catchZone.right;
-  const overlapsCatchZone = itemBottom >= catchZone.top && itemTop <= catchZone.bottom;
-  const sweptIntoCatchZone = previousBottom < catchZone.top && itemBottom >= catchZone.top;
+  return {
+    left: Math.min(current.left, previous.left),
+    right: Math.max(current.right, previous.right),
+    top: current.top,
+    bottom: current.bottom,
+  };
+}
 
-  return horizontallyTouchesCatchZone && (overlapsCatchZone || sweptIntoCatchZone);
+function basketCatchesItem(item, updated, basketX, previousBasketX = basketX) {
+  const catchZone = getSweptCatchZone(basketX, previousBasketX);
+  const itemSweptLeft = Math.min(item.x, updated.x);
+  const itemSweptRight = Math.max(item.x + ITEM_SIZE, updated.x + ITEM_SIZE);
+  const itemSweptTop = Math.min(item.y, updated.y);
+  const itemSweptBottom = Math.max(item.y + ITEM_SIZE, updated.y + ITEM_SIZE);
+
+  const horizontallyTouchesCatchZone = itemSweptRight >= catchZone.left && itemSweptLeft <= catchZone.right;
+  const verticallyTouchesCatchZone = itemSweptBottom >= catchZone.top && itemSweptTop <= catchZone.bottom;
+
+  return horizontallyTouchesCatchZone && verticallyTouchesCatchZone;
 }
 
 function App() {
@@ -274,6 +284,7 @@ function GameBoard({ onGameOver }) {
       state.evading = state.dodgeActive;
       state.speeding = state.speedActive;
       const currentSpeed = PLAYER_SPEED * (state.speeding ? SPEEDUP_MULTIPLIER : 1);
+      const previousBasketX = state.basketX;
       state.basketX = clamp(state.basketX + direction * currentSpeed * delta, 12, GAME_WIDTH - BASKET_WIDTH - 12);
 
       state.spawnClock -= delta;
@@ -299,7 +310,7 @@ function GameBoard({ onGameOver }) {
           updated.vx = -updated.vx;
         }
 
-        if (basketCatchesItem(item, updated, state.basketX)) {
+        if (basketCatchesItem(item, updated, state.basketX, previousBasketX)) {
           if (updated.type === 'rotten') {
             if (state.dodgeActive) {
               survivors.push(updated);
