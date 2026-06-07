@@ -177,6 +177,7 @@ function GameBoard({ onGameOver }) {
     flash: '',
     evading: false,
     speeding: false,
+    movementDirection: 0,
     confetti: [],
     dodgeActive: false,
     dodgeRemaining: 0,
@@ -197,6 +198,7 @@ function GameBoard({ onGameOver }) {
     flash: '',
     evading: false,
     speeding: false,
+    movementDirection: 0,
     confetti: [],
     dodgeActive: false,
     dodgeRemaining: 0,
@@ -304,6 +306,7 @@ function GameBoard({ onGameOver }) {
 
       state.evading = state.dodgeActive;
       state.speeding = state.speedActive;
+      state.movementDirection = direction;
       const currentSpeed = PLAYER_SPEED * (state.speeding ? SPEEDUP_MULTIPLIER : 1);
       const previousBasketX = state.basketX;
       state.basketX = clamp(state.basketX + direction * currentSpeed * delta, 12, GAME_WIDTH - BASKET_WIDTH - 12);
@@ -387,6 +390,7 @@ function GameBoard({ onGameOver }) {
           flash: state.flash,
           evading: state.evading,
           speeding: state.speeding,
+          movementDirection: state.movementDirection,
           confetti: state.confetti,
           dodgeActive: state.dodgeActive,
           dodgeRemaining: state.dodgeRemaining,
@@ -416,7 +420,7 @@ function GameBoard({ onGameOver }) {
         <div className="conveyor-label">SNACK STORM</div>
         {snapshot.items.map((item) => <FallingSnack key={item.id} item={item} />)}
         <ConfettiBurst pieces={snapshot.confetti} />
-        <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} />
+        <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} />
       </div>
       <AbilityPanel
         dodgeActive={snapshot.dodgeActive}
@@ -533,9 +537,11 @@ function ConfettiBurst({ pieces }) {
   ));
 }
 
-function Basket({ x, evading, speeding }) {
+function Basket({ x, evading, speeding, movementDirection }) {
+  const movementClass = movementDirection < 0 ? 'moving-left' : movementDirection > 0 ? 'moving-right' : 'idle';
+
   return (
-    <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
+    <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''} ${movementClass}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
       <div className="boost-wind wind-one" />
       <div className="boost-wind wind-two" />
       <div className="boost-spark spark-one" />

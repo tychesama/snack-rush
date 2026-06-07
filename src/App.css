@@ -596,6 +596,7 @@ h1 {
   height: 10px;
   border-radius: 999px;
   opacity: 0;
+  --boost-trail-x: -14px;
   transform-origin: right center;
   background:
     linear-gradient(90deg, transparent, rgba(49, 214, 255, 0.9) 22%, rgba(255, 255, 255, 0.94) 58%, transparent);
@@ -618,14 +619,31 @@ h1 {
     0 0 12px rgba(255, 244, 107, 0.7);
 }
 
-.basket.speeding .boost-wind {
+.basket.speeding.moving-right .boost-wind,
+.basket.speeding.moving-left .boost-wind {
   opacity: 0.88;
   animation: boostWind 190ms linear infinite alternate;
 }
 
-.basket.speeding .wind-two {
+.basket.speeding.moving-right .wind-two,
+.basket.speeding.moving-left .wind-two {
   opacity: 0.72;
   animation-duration: 135ms;
+}
+
+.basket.moving-left .boost-wind {
+  left: auto;
+  right: -92px;
+  --boost-trail-x: 14px;
+  transform-origin: left center;
+  background:
+    linear-gradient(270deg, transparent, rgba(49, 214, 255, 0.9) 22%, rgba(255, 255, 255, 0.94) 58%, transparent);
+}
+
+.basket.moving-left .wind-two {
+  left: auto;
+  right: -72px;
+  background: linear-gradient(270deg, transparent, rgba(255, 244, 107, 0.95), rgba(255, 255, 255, 0.82), transparent);
 }
 
 .boost-spark {
@@ -648,24 +666,36 @@ h1 {
 .spark-one { left: -22px; top: -10px; }
 .spark-two { right: -18px; bottom: 6px; color: #31d6ff; }
 
-.basket.speeding .boost-spark {
+.basket.speeding.moving-right .boost-spark,
+.basket.speeding.moving-left .boost-spark {
   opacity: 1;
   animation: boostSpark 460ms ease-in-out infinite;
 }
 
-.basket.speeding .spark-two {
+.basket.speeding.moving-right .spark-two,
+.basket.speeding.moving-left .spark-two {
   animation-delay: 160ms;
+}
+
+.basket.moving-left .spark-one {
+  left: auto;
+  right: -22px;
+}
+
+.basket.moving-left .spark-two {
+  right: auto;
+  left: -18px;
 }
 
 .invincible-shield {
   z-index: -3;
-  inset: -23px -22px -12px;
+  inset: -21px -30px -15px;
   opacity: 0;
   border: 6px solid rgba(255, 244, 107, 0.95);
-  border-radius: 999px 999px 42px 42px;
+  border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.82) 0 11px, transparent 12px),
-    radial-gradient(circle, rgba(255, 244, 107, 0.28) 0 42%, rgba(255, 176, 0, 0.18) 57%, transparent 72%);
+    radial-gradient(ellipse at 50% 16%, rgba(255, 255, 255, 0.72) 0 12px, transparent 13px),
+    radial-gradient(ellipse at center, rgba(255, 244, 107, 0.25) 0 44%, rgba(255, 176, 0, 0.18) 59%, transparent 76%);
   box-shadow:
     0 0 0 4px rgba(255, 176, 0, 0.42),
     0 0 24px rgba(255, 244, 107, 0.95),
@@ -675,9 +705,10 @@ h1 {
 .invincible-shield::after {
   content: "";
   position: absolute;
-  inset: 8px 12px 18px;
-  border-radius: inherit;
-  border: 2px dashed rgba(255, 255, 255, 0.7);
+  inset: 8px 12px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.42) 38%, transparent 56%);
+  opacity: 0.72;
 }
 
 .invincible-stars {
@@ -716,7 +747,8 @@ h1 {
   animation: invincibleOrbit 980ms ease-in-out infinite alternate;
 }
 
-.basket.evading.speeding .boost-wind {
+.basket.evading.speeding.moving-right .boost-wind,
+.basket.evading.speeding.moving-left .boost-wind {
   filter: drop-shadow(-3px 2px 0 rgba(43, 18, 57, 0.36)) drop-shadow(0 0 12px rgba(255, 244, 107, 0.85));
 }
 
@@ -778,7 +810,7 @@ h1 {
 
 @keyframes boostWind {
   from { transform: translateX(0) scaleX(0.72); opacity: 0.32; }
-  to { transform: translateX(-14px) scaleX(1.12); opacity: 0.9; }
+  to { transform: translateX(var(--boost-trail-x)) scaleX(1.12); opacity: 0.9; }
 }
 
 @keyframes boostSpark {
