@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 
 const GAME_WIDTH = 980;
 const GAME_HEIGHT = 560;
@@ -23,6 +23,7 @@ const CATCH_ZONE_OFFSET_Y = 1;
 const CATCH_ZONE_TOP = GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT + CATCH_ZONE_OFFSET_Y;
 const CATCH_ZONE_BOTTOM = CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT;
 const MAX_FALL_DRIFT = 28;
+const DEBUG_HITBOXES = false;
 
 const GOOD_SNACKS = ['🍩', '🧁', '🍪', '🍭', '🍫', '🍬', '🥨', '🍿'];
 const BAD_SNACKS = ['☠️', '🤮', '🦠', '💀'];
@@ -126,9 +127,14 @@ function basketCatchesItem(item, updated, basketX, previousBasketX = basketX) {
 
 function App() {
   const [screen, setScreen] = useState('start');
+  const [gameKey, setGameKey] = useState(0);
   const [finalStats, setFinalStats] = useState({ score: 0, caught: 0, reason: 'Ready?' });
 
-  const startGame = () => setScreen('playing');
+  const startGame = () => {
+    setGameKey((key) => key + 1);
+    setScreen('playing');
+  };
+  const showMainMenu = () => setScreen('start');
   const endGame = (stats) => {
     setFinalStats(stats);
     setScreen('gameover');
@@ -141,7 +147,7 @@ function App() {
       <div className="candy-cloud cloud-three">🍩</div>
 
       {screen === 'start' && <StartScreen onStart={startGame} />}
-      {screen === 'playing' && <GameBoard key="active-game" onGameOver={endGame} />}
+      {screen === 'playing' && <GameBoard key={gameKey} onGameOver={endGame} onMainMenu={showMainMenu} onRestart={startGame} />}
       {screen === 'gameover' && <GameOverScreen stats={finalStats} onRestart={startGame} />}
     </main>
   );
@@ -155,6 +161,7 @@ function StartScreen({ onStart }) {
       <p className="tagline">Catch the sweet stuff. Go invincible through suspicious stuff. Keep the basket moving!</p>
       <div className="how-to-play">
         <div><strong>Move:</strong> ← → or A / D</div>
+        <div><strong>Pause:</strong> Esc opens the snack menu</div>
         <div><strong>Boost:</strong> press Z — 5s speed boost, 10s cooldown</div>
         <div><strong>Invincibility:</strong> press X — 5s safety, 10s cooldown</div>
         <div><strong>Catch:</strong> 🍩 🍪 🍭 ⭐</div>
@@ -165,7 +172,8 @@ function StartScreen({ onStart }) {
   );
 }
 
-function GameBoard({ onGameOver }) {
+function GameBoard({ onGameOver, onMainMenu, onRestart }) {
+  const [pauseOpen, setPauseOpen] = useState(false);
   const [snapshot, setSnapshot] = useState({
     basketX: GAME_WIDTH / 2 - BASKET_WIDTH / 2,
     items: [],
@@ -214,17 +222,38 @@ function GameBoard({ onGameOver }) {
     running: true,
   });
   const keysRef = useRef({ left: false, right: false });
+  const pauseOpenRef = useRef(false);
   const animationRef = useRef(null);
   const lastTimeRef = useRef(null);
   const snapshotClockRef = useRef(0);
+  const setPauseMenu = useCallback((open) => {
+    pauseOpenRef.current = open;
+    if (open) keysRef.current = { left: false, right: false };
+    setPauseOpen(open);
+  }, []);
 
   const finishGame = useCallback((reason) => {
     const state = stateRef.current;
     if (!state.running) return;
+    setPauseMenu(false);
     state.running = false;
     cancelAnimationFrame(animationRef.current);
     onGameOver({ score: state.score, caught: state.caught, reason });
-  }, [onGameOver]);
+  }, [onGameOver, setPauseMenu]);
+
+  const restartFromPause = useCallback(() => {
+    stateRef.current.running = false;
+    cancelAnimationFrame(animationRef.current);
+    setPauseMenu(false);
+    onRestart();
+  }, [onRestart, setPauseMenu]);
+
+  const mainMenuFromPause = useCallback(() => {
+    stateRef.current.running = false;
+    cancelAnimationFrame(animationRef.current);
+    setPauseMenu(false);
+    onMainMenu();
+  }, [onMainMenu, setPauseMenu]);
 
   useEffect(() => {
     const activateAbility = (ability) => {
@@ -240,8 +269,17 @@ function GameBoard({ onGameOver }) {
 
     const onKeyDown = (event) => {
       const key = event.key.toLowerCase();
-      const isControlKey = event.key === 'ArrowLeft' || event.key === 'ArrowRight' || key === 'a' || key === 'd' || key === 'x' || key === 'z';
+      const isControlKey = event.key === 'Escape' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || key === 'a' || key === 'd' || key === 'x' || key === 'z';
       if (isControlKey) event.preventDefault();
+
+      if (event.key === 'Escape') {
+        if (event.repeat) return;
+        setPauseMenu(!pauseOpenRef.current);
+        return;
+      }
+
+      if (pauseOpenRef.current) return;
+
       if (event.key === 'ArrowLeft' || key === 'a') keysRef.current.left = true;
       if (event.key === 'ArrowRight' || key === 'd') keysRef.current.right = true;
       if (event.repeat) return;
@@ -265,7 +303,7 @@ function GameBoard({ onGameOver }) {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, []);
+  }, [setPauseMenu]);
 
   useEffect(() => {
     stateRef.current.running = true;
@@ -275,6 +313,13 @@ function GameBoard({ onGameOver }) {
     const tick = (time) => {
       const state = stateRef.current;
       if (!state.running) return;
+
+      if (pauseOpenRef.current) {
+        lastTimeRef.current = time;
+        state.movementDirection = 0;
+        animationRef.current = requestAnimationFrame(tick);
+        return;
+      }
 
       if (lastTimeRef.current === null) lastTimeRef.current = time;
       const delta = Math.min((time - lastTimeRef.current) / 1000, 0.035);
@@ -413,7 +458,7 @@ function GameBoard({ onGameOver }) {
   }, [finishGame]);
 
   return (
-    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''}`} aria-label="SnackRush game area">
+    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${pauseOpen ? 'paused' : ''}`} aria-label="SnackRush game area">
       <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} lives={snapshot.lives} combo={snapshot.combo} />
       <div className="game-board" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
         <div className="shop-awning" />
@@ -421,6 +466,15 @@ function GameBoard({ onGameOver }) {
         {snapshot.items.map((item) => <FallingSnack key={item.id} item={item} />)}
         <ConfettiBurst pieces={snapshot.confetti} />
         <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} />
+        {DEBUG_HITBOXES && <DebugHitboxes items={snapshot.items} basketX={snapshot.basketX} />}
+        {pauseOpen && (
+          <PauseMenu
+            onResume={() => setPauseMenu(false)}
+            onRestart={restartFromPause}
+            onEndGame={() => finishGame('Rush ended from pause menu!')}
+            onMainMenu={mainMenuFromPause}
+          />
+        )}
       </div>
       <AbilityPanel
         dodgeActive={snapshot.dodgeActive}
@@ -503,6 +557,54 @@ function Stat({ label, value, className = '', pulseKey }) {
     <div className={`stat-card ${className}`}>
       <span>{label}</span>
       <strong key={pulseKey ?? value}>{value}</strong>
+    </div>
+  );
+}
+
+function PauseMenu({ onResume, onRestart, onEndGame, onMainMenu }) {
+  return (
+    <div className="pause-menu-overlay" role="dialog" aria-modal="true" aria-label="Paused game menu">
+      <div className="pause-menu-card">
+        <p className="eyebrow">Auto-paused</p>
+        <h2>Snack Break</h2>
+        <p>Esc pauses the rush. Pick a route before the snacks start falling again.</p>
+        <div className="pause-menu-actions">
+          <button className="pause-menu-button" onClick={onResume}>Resume Rush</button>
+          <button className="pause-menu-button" onClick={onRestart}>Restart</button>
+          <button className="pause-menu-button danger" onClick={onEndGame}>End Game</button>
+          <button className="pause-menu-button secondary" onClick={onMainMenu}>Main Menu</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DebugHitboxes({ items, basketX }) {
+  const catchZone = getCatchZone(basketX);
+
+  return (
+    <div className="debug-hitbox-layer" aria-hidden="true">
+      <div
+        className="debug-hitbox basket-box"
+        style={{ left: basketX, top: GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT, width: BASKET_WIDTH, height: BASKET_HEIGHT }}
+      />
+      <div
+        className="debug-hitbox catch-zone"
+        style={{ left: catchZone.left, top: catchZone.top, width: catchZone.right - catchZone.left, height: catchZone.bottom - catchZone.top }}
+      />
+      {items.map((item) => {
+        const hitbox = getItemHitbox(item);
+
+        return (
+          <Fragment key={`debug-${item.id}`}>
+            <div className="debug-hitbox sprite-box" style={{ left: item.x, top: item.y, width: ITEM_SIZE, height: ITEM_SIZE }} />
+            <div
+              className={`debug-hitbox item-hitbox ${item.type}`}
+              style={{ left: hitbox.left, top: hitbox.top, width: hitbox.right - hitbox.left, height: hitbox.bottom - hitbox.top }}
+            />
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
