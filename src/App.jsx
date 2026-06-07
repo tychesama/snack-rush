@@ -503,9 +503,12 @@ function ConfettiBurst({ pieces }) {
 function Basket({ x, evading, speeding }) {
   return (
     <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
+      <div className="speed-ghost ghost-one" />
+      <div className="speed-ghost ghost-two" />
+      <div className="invincible-aura" />
       <div className="speed-trail" />
       <div className="basket-rim" />
-      <div className="basket-face">{evading ? '🙈' : speeding ? '😝' : '😋'}</div>
+      <div className="basket-face">{evading ? '👑' : speeding ? '⚡' : '😋'}</div>
     </div>
   );
 }
