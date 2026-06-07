@@ -123,8 +123,8 @@ function StartScreen({ onStart }) {
       <p className="tagline">Catch the sweet stuff. Go invincible through suspicious stuff. Keep the basket moving!</p>
       <div className="how-to-play">
         <div><strong>Move:</strong> ← → or A / D</div>
-        <div><strong>Invincibility:</strong> press X — 5s safety, 10s cooldown</div>
         <div><strong>Boost:</strong> press Z — 5s speed boost, 10s cooldown</div>
+        <div><strong>Invincibility:</strong> press X — 5s safety, 10s cooldown</div>
         <div><strong>Catch:</strong> 🍩 🍪 🍭 ⭐</div>
         <div><strong>Avoid:</strong> ☠️ 🤮 🦠 💀 bad food</div>
       </div>
@@ -425,15 +425,6 @@ function AbilityPanel({ dodgeActive, dodgeRemaining, dodgeCooldown, speedActive,
   return (
     <div className="ability-panel" aria-label="Ability cooldowns">
       <AbilityCard
-        name="Invincibility"
-        keyName="X"
-        detail="Rotten food passes through; snacks still count"
-        variant="invincibility"
-        active={dodgeActive}
-        cooldown={dodgeCooldown}
-        value={abilityStatus(dodgeActive, dodgeRemaining, dodgeCooldown)}
-      />
-      <AbilityCard
         name="Boost"
         keyName="Z"
         detail="Faster basket movement"
@@ -441,6 +432,15 @@ function AbilityPanel({ dodgeActive, dodgeRemaining, dodgeCooldown, speedActive,
         active={speedActive}
         cooldown={speedCooldown}
         value={abilityStatus(speedActive, speedRemaining, speedCooldown)}
+      />
+      <AbilityCard
+        name="Invincibility"
+        keyName="X"
+        detail="Rotten food passes through; snacks still count"
+        variant="invincibility"
+        active={dodgeActive}
+        cooldown={dodgeCooldown}
+        value={abilityStatus(dodgeActive, dodgeRemaining, dodgeCooldown)}
       />
     </div>
   );
@@ -503,12 +503,19 @@ function ConfettiBurst({ pieces }) {
 function Basket({ x, evading, speeding }) {
   return (
     <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
-      <div className="speed-ghost ghost-one" />
-      <div className="speed-ghost ghost-two" />
-      <div className="invincible-aura" />
-      <div className="speed-trail" />
+      <div className="boost-wind wind-one" />
+      <div className="boost-wind wind-two" />
+      <div className="boost-spark spark-one" />
+      <div className="boost-spark spark-two" />
+      <div className="invincible-shield" />
+      <div className="invincible-stars" />
+      <div className="basket-shadow" />
+      <div className="basket-handle" />
       <div className="basket-rim" />
-      <div className="basket-face">{evading ? '👑' : speeding ? '⚡' : '😋'}</div>
+      <div className="basket-body">
+        <div className="basket-weave" />
+        <div className="basket-badge">😋</div>
+      </div>
     </div>
   );
 }
