@@ -278,6 +278,10 @@ function App() {
 }
 
 function SocialIcon({ link }) {
+  if (link.text) {
+    return <span className="social-icon-text" aria-hidden="true">{link.text}</span>;
+  }
+
   if (link.iconSrc) {
     return <img src={link.iconSrc} alt="" className="social-icon-image" aria-hidden="true" />;
   }
@@ -362,14 +366,23 @@ function InfoModal({ open, onClose, socialLinks }) {
         </div>
 
         <div className="info-social-section">
-          <strong>Links</strong>
-          <nav className="social-logo-row modal-social-logo-row" aria-label="Social links">
-            {socialLinks.map((link) => (
-              <a key={link.id} className={`social-logo social-${link.id}`} href={link.href} aria-label={link.label} title={link.label}>
-                <SocialIcon link={link} />
-              </a>
-            ))}
-          </nav>
+          <strong>Socials</strong>
+          <div className="socials-content-grid">
+            <nav className="social-logo-row modal-social-logo-row" aria-label="Social links">
+              {socialLinks.map((link) => (
+                <a key={link.id} className={`social-logo social-${link.id}`} href={link.href} aria-label={link.label} title={link.label}>
+                  <SocialIcon link={link} />
+                </a>
+              ))}
+            </nav>
+            <div className="made-by-card">
+              <span>Gmail</span>
+              <a href="mailto:jridpan1225@gmail.com">jridpan1225@gmail.com</a>
+              <span>Made by</span>
+              <strong>Joem</strong>
+              <small>Heavily assisted by Codex</small>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -385,7 +398,7 @@ function PlayerNameModal({ open, playerProfile, onChangePlayerProfile, onClose }
 
   if (!open) return null;
 
-  const saveName = () => {
+  const closeAndSave = () => {
     const nextProfile = normalizePlayerProfile({ name: draftName });
     onChangePlayerProfile(nextProfile);
     setDraftName(nextProfile.name);
@@ -393,14 +406,14 @@ function PlayerNameModal({ open, playerProfile, onChangePlayerProfile, onClose }
   };
 
   return (
-    <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>
+    <div className="menu-modal-overlay" role="presentation" onMouseDown={closeAndSave}>
       <div id="snackrush-player-modal" className="menu-modal-card player-name-modal-card" role="dialog" aria-modal="true" aria-label="Change leaderboard player name" onMouseDown={(event) => event.stopPropagation()}>
-        <button type="button" className="menu-modal-close" onClick={onClose} aria-label="Close player name">
+        <button type="button" className="menu-modal-close" onClick={closeAndSave} aria-label="Close and save player name">
           ×
         </button>
         <p className="modal-eyebrow">Leaderboard Name</p>
         <h2>Player Name</h2>
-        <p>Scores save only after a finished rush. Names are capped at {PLAYER_NAME_MAX_LENGTH} characters.</p>
+        <p>Scores save automatically when this modal closes. Names are capped at {PLAYER_NAME_MAX_LENGTH} characters.</p>
         <div className="player-name-edit-row modal-player-name-row">
           <input
             type="text"
@@ -408,15 +421,14 @@ function PlayerNameModal({ open, playerProfile, onChangePlayerProfile, onClose }
             maxLength={PLAYER_NAME_MAX_LENGTH}
             onChange={(event) => setDraftName(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') saveName();
-              if (event.key === 'Escape') onClose();
+              if (event.key === 'Enter') closeAndSave();
+              if (event.key === 'Escape') closeAndSave();
             }}
             aria-label="Leaderboard player name"
             autoFocus
           />
-          <button type="button" onClick={saveName}>Save</button>
         </div>
-        <small>Current: {playerProfile.name}</small>
+        <small>Current saved name: {playerProfile.name}</small>
       </div>
     </div>
   );
@@ -430,6 +442,7 @@ function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfil
     { id: 'linkedin', label: 'LinkedIn', href: '#' },
     { id: 'youtube', label: 'YouTube', href: '#' },
     { id: 'github', label: 'GitHub', href: '#' },
+    { id: 'email', label: 'Gmail', href: 'mailto:jridpan1225@gmail.com', text: 'GM' },
     { id: 'website', label: 'My Website', href: '#', iconSrc: '/social-icons/tychefolio-favicon.svg' },
     { id: 'gamecenter', label: 'Game Center', href: '#', iconSrc: '/social-icons/game-center-favicon.svg' },
   ];
@@ -1285,6 +1298,7 @@ function Leaderboard({ entries, title, subtitle, highlightRank = null }) {
               )}
 
               <span className="leaderboard-rank">#{rank}</span>
+              {rank <= 3 && <span className="leaderboard-medal" aria-hidden="true">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>}
 
               <div className="leaderboard-name">
                 <span>{entry.name}</span>

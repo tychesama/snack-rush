@@ -40,7 +40,9 @@ assert(app.includes('snackrush-local-leaderboard-v1'), 'leaderboard should persi
 assert(app.includes('snackrush-player-profile-v1'), 'player profile should persist separately from leaderboard scores');
 assert(app.includes('PLAYER_NAME_MAX_LENGTH = 15'), 'player names should be capped at 15 characters');
 assert(app.includes('function PlayerNameModal'), 'start screen should expose a change-name modal');
-assert(app.includes('Change Name') && app.includes('Scores save only after a finished rush'), 'player name UI should clarify score write behavior');
+const playerModalSource = app.slice(app.indexOf('function PlayerNameModal'), app.indexOf('function StartScreen'));
+assert(app.includes('Change Name') && playerModalSource.includes('Scores save automatically when this modal closes'), 'player name modal should clarify auto-save-on-close behavior');
+assert(playerModalSource.includes('closeAndSave') && !playerModalSource.includes('>Save<'), 'player name modal should auto-save on close without a save button');
 assert(app.includes('addLeaderboardScore(stats, leaderboard, playerProfile)'), 'completed scores should use the saved player profile name');
 assert(!app.includes("name: 'You'"), 'completed leaderboard scores should not hard-code the player name');
 assert(app.includes('DEFAULT_LEADERBOARD'), 'leaderboard should include default scores to beat');
@@ -57,6 +59,7 @@ assert(infoModalSource.includes('const goodItems') && infoModalSource.includes('
 assert(app.indexOf('</section>') < app.indexOf('<InfoModal open={infoOpen}'), 'start modals should render outside the clipped pop-panel');
 assert(app.includes('start-action-row') && app.includes('menu-info-button') && app.includes('player-name-button'), 'start screen should place info and player name buttons around Start Rush');
 assert(app.includes("iconSrc: '/social-icons/tychefolio-favicon.svg'") && app.includes("iconSrc: '/social-icons/game-center-favicon.svg'"), 'website and game center should use copied favicon assets');
+assert(app.includes("mailto:jridpan1225@gmail.com") && app.includes('Made by') && app.includes('Joem') && app.includes('Heavily assisted by Codex'), 'info modal socials should include gmail and maker credits');
 assert(!app.includes('Catch the sweet stuff. Power through suspicious snacks. Survive the candy shop chaos!'), 'old inline tagline should be removed in favor of the help popover');
 assert(!app.includes('BOOST ACTIVATED'), 'boost activated text should be removed from controls and HUD');
 assert(app.includes('className="boost-aura"'), 'basket should include a boost aura visual effect');
@@ -73,6 +76,8 @@ assert(css.includes('.controls-panel'), 'one-panel controls styles should exist'
 assert(css.includes('.control-key:hover'), 'designed key controls should be hoverable');
 assert(app.includes('Control Panel') && !app.includes('How to play'), 'main menu controls should keep the compact heading without the old badge');
 assert(css.includes('.menu-modal-overlay') && css.includes('.info-modal-card') && css.includes('.modal-social-logo-row'), 'combined info modal styles should exist');
+assert(css.includes('.info-modal-card') && css.includes('overflow: hidden') && css.includes('.socials-content-grid'), 'info modal should hide scrollbars and use the socials panel space');
+assert(app.includes('leaderboard-medal') && css.includes('.leaderboard-medal') && css.includes('leaderboard-top-crown'), 'leaderboard top 3 should include medal styling and a bounded crown');
 assert(app.includes('main-controls-top-grid') && css.includes('.main-controls-top-grid'), 'control panel should use a compact top grid layout');
 assert(!app.includes('main-section-kicker') && app.includes('main-rule-label') && !app.includes('main-rule-kicker'), 'control panel should use plain text labels instead of circular badge labels');
 assert(app.includes('Move Basket') && app.includes('Skills') && app.includes('Catch') && app.includes('Avoid') && app.includes('Specials'), 'menu and info modal should show plain text section labels');
