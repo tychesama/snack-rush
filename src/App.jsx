@@ -3,40 +3,49 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 const GAME_WIDTH = 980;
 const GAME_HEIGHT = 560;
 const BASKET_WIDTH = 108;
-const BASKET_HEIGHT = 58;
+const BASKET_HEIGHT = 54;
 const ITEM_SIZE = 44;
-const ITEM_HITBOX_INSET_X = 7;
-const ITEM_HITBOX_TOP_INSET = 6;
-const ITEM_HITBOX_BOTTOM_INSET = 7;
+const ITEM_HITBOX_INSET_X = 8;
+const ITEM_HITBOX_TOP_INSET = 8;
+const ITEM_HITBOX_BOTTOM_INSET = 8;
 const GAME_SECONDS = 45;
 const STARTING_LIVES = 3;
 const PLAYER_SPEED = 520;
 const SPEEDUP_MULTIPLIER = 1.65;
 const ABILITY_DURATION = 5;
 const ABILITY_COOLDOWN = 10;
-const BASKET_BOTTOM_OFFSET = 18;
-const CATCH_ZONE_INSET_X = 5;
+const READY_COUNTDOWN_SECONDS = 3;
+const GAME_OVER_HOLD_SECONDS = 5;
+const BASKET_BOTTOM_OFFSET = 8;
+const CATCH_ZONE_INSET_X = 9;
 const CATCH_ZONE_WIDTH = BASKET_WIDTH - CATCH_ZONE_INSET_X * 2;
-const CATCH_ZONE_HEIGHT = 22;
+const CATCH_ZONE_HEIGHT = 18;
 const CATCH_ZONE_OFFSET_X = CATCH_ZONE_INSET_X;
-const CATCH_ZONE_OFFSET_Y = 1;
+const CATCH_ZONE_OFFSET_Y = 0;
 const CATCH_ZONE_TOP = GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT + CATCH_ZONE_OFFSET_Y;
 const CATCH_ZONE_BOTTOM = CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT;
 const MAX_FALL_DRIFT = 28;
-const DEBUG_HITBOXES = false;
+const DEBUG_HITBOXES_DEFAULT = false;
 
 const GOOD_SNACKS = ['🍩', '🧁', '🍪', '🍭', '🍫', '🍬', '🥨', '🍿'];
 const BAD_SNACKS = ['☠️', '🤮', '🦠', '💀'];
 const POWER_SNACKS = ['⭐', '💎'];
 const CONFETTI_COLORS = ['#ff2f91', '#ffb000', '#31d6ff', '#7a2ee8', '#69ff9f', '#fff46b'];
 const LEADERBOARD_KEY = 'snackrush-local-leaderboard-v1';
-const LEADERBOARD_LIMIT = 5;
+const PLAYER_PROFILE_KEY = 'snackrush-player-profile-v1';
+const LEADERBOARD_LIMIT = 50;
+const PLAYER_NAME_MAX_LENGTH = 15;
+const DEFAULT_PLAYER_NAME = 'SweetTooth';
 const DEFAULT_LEADERBOARD = [
-  { id: 'default-1', name: 'Tyche', score: 520, caught: 38, tag: 'Candy Queen' },
-  { id: 'default-2', name: 'Gummy Goblin', score: 430, caught: 32, tag: 'Sticky Fingers' },
-  { id: 'default-3', name: 'Donut Dash', score: 320, caught: 25, tag: 'Glaze Blazer' },
-  { id: 'default-4', name: 'Cookie Kid', score: 235, caught: 19, tag: 'Crumb Runner' },
-  { id: 'default-5', name: 'Rookie Rush', score: 145, caught: 12, tag: 'First Bite' },
+  { id: 'default-1', name: 'Tyche', score: 520, caught: 38, tag: 'Candy Queen', createdAt: 50 },
+  { id: 'default-2', name: 'Gummy Goblin', score: 430, caught: 32, tag: 'Sticky Fingers', createdAt: 40 },
+  { id: 'default-3', name: 'Donut Dash', score: 320, caught: 25, tag: 'Glaze Blazer', createdAt: 30 },
+  { id: 'default-4', name: 'Cookie Kid', score: 235, caught: 19, tag: 'Crumb Runner', createdAt: 20 },
+  { id: 'default-5', name: 'Rookie Rush', score: 145, caught: 12, tag: 'First Bite', createdAt: 10 },
+  { id: 'default-6', name: 'Mochi Mage', score: 120, caught: 10, tag: 'Soft Serve', createdAt: 9 },
+  { id: 'default-7', name: 'Lolli Pilot', score: 95, caught: 8, tag: 'Sky Sugar', createdAt: 8 },
+  { id: 'default-8', name: 'Choco Champ', score: 75, caught: 7, tag: 'Cocoa Crew', createdAt: 7 },
+  { id: 'default-9', name: 'Jelly Bean', score: 55, caught: 5, tag: 'Tiny Treat', createdAt: 6 },
 ];
 
 const freshItem = (id) => {
@@ -94,18 +103,43 @@ function sortLeaderboard(entries) {
   }
 
   return [...uniqueEntries.values()]
-    .sort((a, b) => b.score - a.score || b.caught - a.caught)
+    .sort((a, b) => b.score - a.score || b.caught - a.caught || (b.createdAt || 0) - (a.createdAt || 0))
     .slice(0, LEADERBOARD_LIMIT);
+}
+
+function normalizePlayerName(name) {
+  const trimmed = String(name || '').trim().slice(0, PLAYER_NAME_MAX_LENGTH);
+  return trimmed || DEFAULT_PLAYER_NAME;
+}
+
+function normalizePlayerProfile(profile = {}) {
+  return { name: normalizePlayerName(profile.name) };
+}
+
+function loadPlayerProfile() {
+  if (typeof window === 'undefined') return normalizePlayerProfile();
+
+  try {
+    return normalizePlayerProfile(JSON.parse(window.localStorage.getItem(PLAYER_PROFILE_KEY) || '{}'));
+  } catch {
+    return normalizePlayerProfile();
+  }
+}
+
+function savePlayerProfile(profile) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(normalizePlayerProfile(profile)));
 }
 
 function normalizeLeaderboardEntry(entry, fallbackIndex = 0) {
   return {
     id: String(entry.id || `local-${fallbackIndex}`),
-    name: String(entry.name || 'Mystery Muncher').slice(0, 18),
+    name: normalizePlayerName(entry.name || 'Mystery Munch'),
     score: Math.max(0, Math.floor(Number(entry.score) || 0)),
     caught: Math.max(0, Math.floor(Number(entry.caught) || 0)),
     tag: String(entry.tag || 'Local Hero').slice(0, 24),
     isPlayer: Boolean(entry.isPlayer),
+    createdAt: Number(entry.createdAt) || fallbackIndex,
   };
 }
 
@@ -127,15 +161,17 @@ function saveLeaderboard(entries) {
   window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
 }
 
-function addLeaderboardScore(stats, currentEntries) {
-  const entryId = `player-${Date.now()}`;
+function addLeaderboardScore(stats, currentEntries, playerProfile) {
+  const createdAt = Date.now();
+  const entryId = `player-${createdAt}`;
   const playerEntry = {
     id: entryId,
-    name: 'You',
+    name: normalizePlayerName(playerProfile?.name),
     score: Math.max(0, Math.floor(stats.score || 0)),
     caught: Math.max(0, Math.floor(stats.caught || 0)),
     tag: stats.score >= DEFAULT_LEADERBOARD[0].score ? 'Top Snack Boss' : 'Local Challenger',
     isPlayer: true,
+    createdAt,
   };
   const leaderboard = sortLeaderboard([...currentEntries, playerEntry]);
   const rank = leaderboard.findIndex((entry) => entry.id === entryId);
@@ -200,7 +236,14 @@ function App() {
   const [screen, setScreen] = useState('start');
   const [gameKey, setGameKey] = useState(0);
   const [leaderboard, setLeaderboard] = useState(loadLeaderboard);
+  const [playerProfile, setPlayerProfile] = useState(loadPlayerProfile);
   const [finalStats, setFinalStats] = useState({ score: 0, caught: 0, reason: 'Ready?', leaderboard, leaderboardRank: null });
+
+  const updatePlayerProfile = (nextProfile) => {
+    const profile = normalizePlayerProfile(nextProfile);
+    savePlayerProfile(profile);
+    setPlayerProfile(profile);
+  };
 
   const startGame = () => {
     setGameKey((key) => key + 1);
@@ -208,7 +251,7 @@ function App() {
   };
   const showMainMenu = () => setScreen('start');
   const endGame = (stats) => {
-    const result = addLeaderboardScore(stats, leaderboard);
+    const result = addLeaderboardScore(stats, leaderboard, playerProfile);
     setLeaderboard(result.leaderboard);
     setFinalStats({ ...stats, leaderboard: result.leaderboard, leaderboardRank: result.rank });
     setScreen('gameover');
@@ -220,46 +263,318 @@ function App() {
       <div className="candy-cloud cloud-two">🍭</div>
       <div className="candy-cloud cloud-three">🍩</div>
 
-      {screen === 'start' && <StartScreen onStart={startGame} leaderboard={leaderboard} />}
+      {screen === 'start' && (
+        <StartScreen
+          onStart={startGame}
+          leaderboard={leaderboard}
+          playerProfile={playerProfile}
+          onChangePlayerProfile={updatePlayerProfile}
+        />
+      )}
       {screen === 'playing' && <GameBoard key={gameKey} onGameOver={endGame} onMainMenu={showMainMenu} onRestart={startGame} />}
       {screen === 'gameover' && <GameOverScreen stats={finalStats} leaderboard={leaderboard} onRestart={startGame} onMainMenu={showMainMenu} />}
     </main>
   );
 }
 
-function StartScreen({ onStart, leaderboard }) {
+function SocialIcon({ link }) {
+  if (link.iconSrc) {
+    return <img src={link.iconSrc} alt="" className="social-icon-image" aria-hidden="true" />;
+  }
+
+  switch (link.id) {
+    case 'facebook':
+      return (
+        <svg viewBox="0 0 24 24" className="social-icon-svg" aria-hidden="true">
+          <path d="M13.5 21v-7.1h2.4l.4-2.8h-2.8V9.3c0-.82.23-1.38 1.4-1.38H16V5.4c-.18-.02-.82-.08-1.57-.08-3.1 0-4.93 1.89-4.93 5.35v1.44H7v2.8h2.5V21h4Z" fill="currentColor" />
+        </svg>
+      );
+    case 'linkedin':
+      return (
+        <svg viewBox="0 0 24 24" className="social-icon-svg" aria-hidden="true">
+          <path d="M6.7 8.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4ZM5.2 9.6h3V19h-3V9.6Zm4.9 0H13v1.28h.04c.4-.77 1.4-1.58 2.87-1.58 3.08 0 3.65 2.03 3.65 4.67V19h-3v-4.4c0-1.05-.02-2.4-1.46-2.4-1.47 0-1.7 1.15-1.7 2.33V19h-3V9.6Z" fill="currentColor" />
+        </svg>
+      );
+    case 'youtube':
+      return (
+        <svg viewBox="0 0 24 24" className="social-icon-svg" aria-hidden="true">
+          <path d="M21.2 8.1a2.9 2.9 0 0 0-2.05-2.05C17.36 5.6 12 5.6 12 5.6s-5.36 0-7.15.45A2.9 2.9 0 0 0 2.8 8.1 30.2 30.2 0 0 0 2.35 12c0 1.33.15 2.65.45 3.9a2.9 2.9 0 0 0 2.05 2.05c1.79.45 7.15.45 7.15.45s5.36 0 7.15-.45a2.9 2.9 0 0 0 2.05-2.05c.3-1.25.45-2.57.45-3.9s-.15-2.65-.45-3.9ZM10.2 15.25v-6.5L15.8 12l-5.6 3.25Z" fill="currentColor" />
+        </svg>
+      );
+    case 'github':
+      return (
+        <svg viewBox="0 0 24 24" className="social-icon-svg" aria-hidden="true">
+          <path d="M12 4.8a7.2 7.2 0 0 0-2.28 14.03c.36.07.49-.16.49-.35v-1.24c-2 .43-2.43-.84-2.43-.84-.33-.84-.8-1.07-.8-1.07-.66-.45.05-.44.05-.44.73.05 1.11.75 1.11.75.65 1.12 1.7.8 2.12.61.07-.47.25-.8.46-.99-1.6-.18-3.3-.8-3.3-3.6 0-.8.29-1.45.75-1.97-.08-.18-.33-.92.07-1.92 0 0 .61-.2 2 .75A6.85 6.85 0 0 1 12 8.7c.6 0 1.2.08 1.76.24 1.4-.95 2-.75 2-.75.4 1 .15 1.74.07 1.92.47.52.75 1.17.75 1.97 0 2.8-1.7 3.42-3.31 3.6.26.23.5.67.5 1.35v2c0 .2.13.43.5.35A7.2 7.2 0 0 0 12 4.8Z" fill="currentColor" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function InfoModal({ open, onClose, socialLinks }) {
+  if (!open) return null;
+
+
+  return (
+    <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>
+      <div id="snackrush-info-modal" className="menu-modal-card info-modal-card" role="dialog" aria-modal="true" aria-label="SnackRush mechanics and links" onMouseDown={(event) => event.stopPropagation()}>
+        <button type="button" className="menu-modal-close" onClick={onClose} aria-label="Close info">
+          ×
+        </button>
+        <p className="modal-eyebrow">Rush Guide</p>
+        <h2>Game Mechanics</h2>
+        <p>Catch sweets, avoid rotten drops, time your skills, and survive the rush clock as the candy shop gets meaner.</p>
+
+        <div className="info-mechanics-grid">
+          <section className="info-mechanic-card">
+            <strong>Catch</strong>
+            <div className="main-rule-icons" aria-label="Good snacks to catch">
+              {goodItems.map((item) => <span key={item} className="main-rule-token">{item}</span>)}
+            </div>
+            <small>Good snacks add score and keep your combo alive.</small>
+          </section>
+
+          <section className="info-mechanic-card danger">
+            <strong>Avoid</strong>
+            <div className="main-rule-icons" aria-label="Bad snacks to avoid">
+              {badItems.map((item) => <span key={item} className="main-rule-token">{item}</span>)}
+            </div>
+            <small>Rotten drops cost hearts and instantly break combo unless protected.</small>
+          </section>
+
+          <section className="info-mechanic-card wide">
+            <strong>Difficulty spikes</strong>
+            <small>Difficulty rises every minute, increasing fall pressure and rotten snack danger. In the planned 10-minute mode, it caps at minute 10.</small>
+          </section>
+
+          <section className="info-mechanic-card wide">
+            <strong>Snack storms</strong>
+            <small>Major rushes are planned at 2:30, 5:00, 7:30, and 9:30. Storms last 20 seconds, flood the board, add more bombs/rotten drops, and guarantee a powerup at the start.</small>
+          </section>
+
+          <section className="info-mechanic-card wide">
+            <strong>Skills</strong>
+            <small>Z Dash, X Shield, C Double Points, and V Random Special are the planned skill layout. Skills share a global cooldown in the refinement plan.</small>
+          </section>
+        </div>
+
+        <div className="info-social-section">
+          <strong>Links</strong>
+          <nav className="social-logo-row modal-social-logo-row" aria-label="Social links">
+            {socialLinks.map((link) => (
+              <a key={link.id} className={`social-logo social-${link.id}`} href={link.href} aria-label={link.label} title={link.label}>
+                <SocialIcon link={link} />
+              </a>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlayerNameModal({ open, playerProfile, onChangePlayerProfile, onClose }) {
+  const [draftName, setDraftName] = useState(playerProfile.name);
+
+  useEffect(() => {
+    if (open) setDraftName(playerProfile.name);
+  }, [open, playerProfile.name]);
+
+  if (!open) return null;
+
+  const saveName = () => {
+    const nextProfile = normalizePlayerProfile({ name: draftName });
+    onChangePlayerProfile(nextProfile);
+    setDraftName(nextProfile.name);
+    onClose();
+  };
+
+  return (
+    <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>
+      <div id="snackrush-player-modal" className="menu-modal-card player-name-modal-card" role="dialog" aria-modal="true" aria-label="Change leaderboard player name" onMouseDown={(event) => event.stopPropagation()}>
+        <button type="button" className="menu-modal-close" onClick={onClose} aria-label="Close player name">
+          ×
+        </button>
+        <p className="modal-eyebrow">Leaderboard Name</p>
+        <h2>Player Name</h2>
+        <p>Scores save only after a finished rush. Names are capped at {PLAYER_NAME_MAX_LENGTH} characters.</p>
+        <div className="player-name-edit-row modal-player-name-row">
+          <input
+            type="text"
+            value={draftName}
+            maxLength={PLAYER_NAME_MAX_LENGTH}
+            onChange={(event) => setDraftName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') saveName();
+              if (event.key === 'Escape') onClose();
+            }}
+            aria-label="Leaderboard player name"
+            autoFocus
+          />
+          <button type="button" onClick={saveName}>Save</button>
+        </div>
+        <small>Current: {playerProfile.name}</small>
+      </div>
+    </div>
+  );
+}
+
+function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfile }) {
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [playerNameOpen, setPlayerNameOpen] = useState(false);
+  const socialLinks = [
+    { id: 'facebook', label: 'Facebook', href: '#' },
+    { id: 'linkedin', label: 'LinkedIn', href: '#' },
+    { id: 'youtube', label: 'YouTube', href: '#' },
+    { id: 'github', label: 'GitHub', href: '#' },
+    { id: 'website', label: 'My Website', href: '#', iconSrc: '/social-icons/tychefolio-favicon.svg' },
+    { id: 'gamecenter', label: 'Game Center', href: '#', iconSrc: '/social-icons/game-center-favicon.svg' },
+  ];
+
   return (
     <section className="panel start-panel pop-panel">
       <div className="menu-sparkle sparkle-left" aria-hidden="true">✦</div>
       <div className="menu-sparkle sparkle-right" aria-hidden="true">✦</div>
+
       <p className="eyebrow hero-eyebrow">TYCHE CANDY SHOP PRESENTS</p>
-      <div className="title-stack" aria-label="SnackRush">
+
+      <div className="title-stack main-menu-title" aria-label="SnackRush">
         <span className="title-candy" aria-hidden="true">🍬</span>
         <h1>SnackRush</h1>
         <span className="title-candy" aria-hidden="true">🍭</span>
       </div>
-      <p className="tagline hero-tagline">Catch the sweet stuff. Power through suspicious snacks. Survive the candy shop chaos!</p>
-      <div className="snack-marquee" aria-hidden="true">
-        <span>🍩</span><span>🍪</span><span>🍭</span><span>⭐</span><span>☠️</span><span>🤮</span>
+
+      <div className="start-action-row">
+        <button
+          type="button"
+          className="secondary-button start-side-button menu-info-button"
+          onClick={() => setInfoOpen(true)}
+          aria-controls="snackrush-info-modal"
+        >
+          Info
+        </button>
+
+        <button className="primary-button jumbo-button main-start-button" onClick={onStart}>
+          Start Rush!
+        </button>
+
+        <button
+          type="button"
+          className="secondary-button start-side-button player-name-button"
+          onClick={() => setPlayerNameOpen(true)}
+          aria-controls="snackrush-player-modal"
+          aria-label={`Change Name: ${playerProfile.name}`}
+        >
+          Change Name
+        </button>
       </div>
-      <div className="menu-layout">
-        <div className="how-to-play menu-card-grid">
-          <div><strong>Move</strong><span>← → or A / D</span></div>
-          <div><strong>Pause</strong><span>Esc opens the snack menu</span></div>
-          <div><strong>Boost</strong><span>Z — 5s speed burst</span></div>
-          <div><strong>Invincibility</strong><span>X — 5s safety shield</span></div>
-          <div><strong>Catch</strong><span>🍩 🍪 🍭 ⭐</span></div>
-          <div><strong>Avoid</strong><span>☠️ 🤮 🦠 💀 bad food</span></div>
+
+      <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} socialLinks={socialLinks} />
+      <PlayerNameModal open={playerNameOpen} playerProfile={playerProfile} onChangePlayerProfile={onChangePlayerProfile} onClose={() => setPlayerNameOpen(false)} />
+
+      <div className="menu-layout main-menu-layout">
+        <ControlsPanel />
+        <Leaderboard
+          entries={leaderboard}
+          title="Local leaderboard"
+          subtitle={`Beat ${leaderboard[0]?.name || 'Tyche'} at ${leaderboard[0]?.score || 0}!`}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ControlsPanel() {
+  const skills = [
+    { id: 'dash', key: 'Z', name: 'Dash', tone: 'skill-ready', tooltip: 'Planned skill: dash in your current move direction with brief invincibility frames.' },
+    { id: 'shield', key: 'X', name: 'Shield', tone: 'skill-ready', tooltip: 'Planned skill: block rotten hits for a short burst.' },
+    { id: 'double-points', key: 'C', name: 'Double Points', tone: 'skill-ready', tooltip: 'Planned skill: double your score gains for 5 seconds before a lingering slow.' },
+    { id: 'random-special', key: 'V', name: 'Random Special', tone: 'skill-ready', tooltip: 'Planned skill: instantly trigger one random special effect.' },
+  ];
+  const specialItems = [
+    { emoji: '⭐', name: 'Star', tooltip: 'Bonus pickup. Grab it for a premium score pop.' },
+    { emoji: '💎', name: 'Gem', tooltip: 'Bonus pickup. Worth extra points when you catch it.' },
+    { emoji: '🛡️', name: 'Shield', tooltip: 'Menu preview only for now. Planned as a safety special.' },
+    { emoji: '⚡', name: 'Lightning', tooltip: 'Menu preview only for now. Planned as a speed-style special.' },
+    { emoji: '🧲', name: 'Magnet', tooltip: 'Menu preview only for now. Planned as a candy-pull special.' },
+    { emoji: '🔥', name: 'Fire', tooltip: 'High-energy special teaser slot.' },
+  ];
+
+  return (
+    <section className="controls-panel main-controls-panel" aria-label="SnackRush controls">
+      <div className="main-controls-heading">
+        <strong>Control Panel</strong>
+      </div>
+
+      <div className="main-controls-top-grid">
+        <div className="main-feature-card main-move-block">
+          <div className="main-section-heading">
+            <strong>Move Basket</strong>
+          </div>
+
+          <div className="key-cluster main-move-keys" aria-label="Move with arrow keys or A and D">
+            <kbd className="control-key letter-key">A</kbd>
+            <kbd className="control-key letter-key">D</kbd>
+            <span className="key-or">or</span>
+            <kbd className="control-key arrow-key">←</kbd>
+            <kbd className="control-key arrow-key">→</kbd>
+          </div>
         </div>
-        <Leaderboard entries={leaderboard} title="Local leaderboard" subtitle={`Beat ${leaderboard[0]?.name || 'Tyche'} at ${leaderboard[0]?.score || 0}!`} />
+
+        <div className="main-feature-card main-skills-block">
+          <div className="main-section-heading">
+            <strong>Skills</strong>
+          </div>
+
+          <div className="main-skills-grid">
+            {skills.map((skill) => (
+              <div
+                key={skill.id}
+                className={`main-skill-card ${skill.tone}`}
+                data-tooltip={skill.tooltip}
+                aria-label={`${skill.name} on ${skill.key}`}
+              >
+                <kbd>{skill.key}</kbd>
+                <span>{skill.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <button className="primary-button jumbo-button" onClick={onStart}>Start Rush!</button>
+
+      <div className="main-snack-rules specials-only-rules">
+        <div className="main-rule-card special-rule">
+          <span className="main-rule-label">Specials</span>
+          <div className="main-rule-icons main-special-icons" aria-label="Special snacks and powerups">
+            {specialItems.map((item) => (
+              <button
+                key={item.name}
+                type="button"
+                className="main-rule-token special-token"
+                data-tooltip={item.tooltip}
+                aria-label={item.name}
+                title={item.name}
+              >
+                {item.emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
 
 function GameBoard({ onGameOver, onMainMenu, onRestart }) {
   const [pauseOpen, setPauseOpen] = useState(false);
+  const [debugMode, setDebugMode] = useState(DEBUG_HITBOXES_DEFAULT);
+  const [skillPressTimers, setSkillPressTimers] = useState({});
+  const [readyCountdown, setReadyCountdown] = useState(READY_COUNTDOWN_SECONDS);
+  const [gameOverHold, setGameOverHold] = useState(null);
+  const skillPressTimersRef = useRef({});
+  const readyCountdownRef = useRef(READY_COUNTDOWN_SECONDS);
+  const gameOverHoldRef = useRef(null);
   const [snapshot, setSnapshot] = useState({
     basketX: GAME_WIDTH / 2 - BASKET_WIDTH / 2,
     items: [],
@@ -318,14 +633,34 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     setPauseOpen(open);
   }, []);
 
+  const startReadyCountdown = useCallback(() => {
+    readyCountdownRef.current = READY_COUNTDOWN_SECONDS;
+    setReadyCountdown(READY_COUNTDOWN_SECONDS);
+    keysRef.current = { left: false, right: false };
+  }, []);
+
+  const resumeFromPause = useCallback(() => {
+    setPauseMenu(false);
+    startReadyCountdown();
+  }, [setPauseMenu, startReadyCountdown]);
+
+  const confirmGameOver = useCallback((nextHold = gameOverHoldRef.current) => {
+    if (!nextHold) return;
+    gameOverHoldRef.current = null;
+    setGameOverHold(null);
+    onGameOver({ score: nextHold.score, caught: nextHold.caught, reason: nextHold.reason });
+  }, [onGameOver]);
+
   const finishGame = useCallback((reason) => {
     const state = stateRef.current;
     if (!state.running) return;
     setPauseMenu(false);
     state.running = false;
     cancelAnimationFrame(animationRef.current);
-    onGameOver({ score: state.score, caught: state.caught, reason });
-  }, [onGameOver, setPauseMenu]);
+    const nextHold = { score: state.score, caught: state.caught, reason, timeLeft: GAME_OVER_HOLD_SECONDS };
+    gameOverHoldRef.current = nextHold;
+    setGameOverHold(nextHold);
+  }, [setPauseMenu]);
 
   const restartFromPause = useCallback(() => {
     stateRef.current.running = false;
@@ -341,26 +676,63 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     onMainMenu();
   }, [onMainMenu, setPauseMenu]);
 
+  const pulseSkillCountdown = useCallback((skillId) => {
+    skillPressTimersRef.current = { ...skillPressTimersRef.current, [skillId]: 5 };
+    setSkillPressTimers(skillPressTimersRef.current);
+  }, []);
+
+  const activateAbility = useCallback((ability) => {
+    const state = stateRef.current;
+    const activeKey = `${ability}Active`;
+    const remainingKey = `${ability}Remaining`;
+    const cooldownKey = `${ability}Cooldown`;
+
+    if (state[activeKey] || state[cooldownKey] > 0) return false;
+    state[activeKey] = true;
+    state[remainingKey] = ABILITY_DURATION;
+    return true;
+  }, []);
+
+  const canTriggerSkill = useCallback((skillId) => {
+    if (pauseOpenRef.current || readyCountdownRef.current > 0 || gameOverHoldRef.current) return false;
+
+    const state = stateRef.current;
+    if (skillId === 'boost') return !state.speedActive && state.speedCooldown <= 0;
+    if (skillId === 'shield') return !state.dodgeActive && state.dodgeCooldown <= 0;
+    if (skillId === 'debug') return !debugMode && !skillPressTimersRef.current.debug;
+    if (skillId === 'magnet' || skillId === 'frenzy') return !skillPressTimersRef.current[skillId];
+    return false;
+  }, [debugMode]);
+
+  const handleSkillPress = useCallback((skillId) => {
+    if (!canTriggerSkill(skillId)) return;
+    pulseSkillCountdown(skillId);
+
+    if (skillId === 'boost') activateAbility('speed');
+    if (skillId === 'shield') activateAbility('dodge');
+    if (skillId === 'debug') setDebugMode((enabled) => !enabled);
+  }, [activateAbility, canTriggerSkill, pulseSkillCountdown]);
+
   useEffect(() => {
-    const activateAbility = (ability) => {
-      const state = stateRef.current;
-      const activeKey = `${ability}Active`;
-      const remainingKey = `${ability}Remaining`;
-      const cooldownKey = `${ability}Cooldown`;
-
-      if (state[activeKey] || state[cooldownKey] > 0) return;
-      state[activeKey] = true;
-      state[remainingKey] = ABILITY_DURATION;
-    };
-
     const onKeyDown = (event) => {
       const key = event.key.toLowerCase();
-      const isControlKey = event.key === 'Escape' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || key === 'a' || key === 'd' || key === 'x' || key === 'z';
+      const isControlKey = event.key === 'Escape' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || key === 'a' || key === 'd' || key === 'x' || key === 'z' || key === 'h' || key === 'c' || key === 'v';
       if (isControlKey) event.preventDefault();
+
+      if (key === 'h' && !event.repeat) {
+        handleSkillPress('debug');
+        return;
+      }
+
+      if (gameOverHoldRef.current) return;
 
       if (event.key === 'Escape') {
         if (event.repeat) return;
-        setPauseMenu(!pauseOpenRef.current);
+        if (pauseOpenRef.current) {
+          resumeFromPause();
+        } else {
+          setPauseMenu(true);
+        }
         return;
       }
 
@@ -369,8 +741,10 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       if (event.key === 'ArrowLeft' || key === 'a') keysRef.current.left = true;
       if (event.key === 'ArrowRight' || key === 'd') keysRef.current.right = true;
       if (event.repeat) return;
-      if (key === 'x') activateAbility('dodge');
-      if (key === 'z') activateAbility('speed');
+      if (key === 'x') handleSkillPress('shield');
+      if (key === 'z') handleSkillPress('boost');
+      if (key === 'c') handleSkillPress('magnet');
+      if (key === 'v') handleSkillPress('frenzy');
     };
     const onKeyUp = (event) => {
       const key = event.key.toLowerCase();
@@ -389,7 +763,24 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [setPauseMenu]);
+  }, [handleSkillPress, resumeFromPause, setPauseMenu]);
+
+  useEffect(() => {
+    if (!gameOverHold) return undefined;
+
+    const timer = window.setTimeout(() => {
+      if (gameOverHold.timeLeft <= 0.1) {
+        confirmGameOver(gameOverHold);
+        return;
+      }
+
+      const nextHold = { ...gameOverHold, timeLeft: Math.max(0, gameOverHold.timeLeft - 0.1) };
+      gameOverHoldRef.current = nextHold;
+      setGameOverHold(nextHold);
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [confirmGameOver, gameOverHold]);
 
   useEffect(() => {
     stateRef.current.running = true;
@@ -410,6 +801,16 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       if (lastTimeRef.current === null) lastTimeRef.current = time;
       const delta = Math.min((time - lastTimeRef.current) / 1000, 0.035);
       lastTimeRef.current = time;
+
+      if (readyCountdownRef.current > 0) {
+        const nextCountdown = Math.max(0, readyCountdownRef.current - delta);
+        readyCountdownRef.current = nextCountdown;
+        setReadyCountdown(nextCountdown);
+        state.movementDirection = 0;
+        animationRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
       state.elapsed += delta;
       state.timeLeft = Math.max(0, GAME_SECONDS - state.elapsed);
 
@@ -452,6 +853,16 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       state.confetti = state.confetti
         .map((piece) => ({ ...piece, age: piece.age + delta }))
         .filter((piece) => piece.age < 0.75);
+
+      if (Object.keys(skillPressTimersRef.current).length > 0) {
+        const nextSkillPressTimers = Object.fromEntries(
+          Object.entries(skillPressTimersRef.current)
+            .map(([skillId, remaining]) => [skillId, Math.max(0, remaining - delta)])
+            .filter(([, remaining]) => remaining > 0)
+        );
+        skillPressTimersRef.current = nextSkillPressTimers;
+        setSkillPressTimers(nextSkillPressTimers);
+      }
 
       const survivors = [];
       for (const item of state.items) {
@@ -544,33 +955,69 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
   }, [finishGame]);
 
   return (
-    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${pauseOpen ? 'paused' : ''}`} aria-label="SnackRush game area">
+    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${pauseOpen ? 'paused' : ''} ${gameOverHold ? 'gameover-hold' : ''}`} aria-label="SnackRush game area">
       <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} lives={snapshot.lives} combo={snapshot.combo} />
       <div className="game-board" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
         <div className="shop-awning" />
         <div className="conveyor-label">SNACK STORM</div>
+        <SkillsHotkeysPanel
+          debugMode={debugMode}
+          paused={pauseOpen}
+          locked={Boolean(gameOverHold) || readyCountdown > 0}
+          skillPressTimers={skillPressTimers}
+          speedActive={snapshot.speedActive}
+          speedRemaining={snapshot.speedRemaining}
+          speedCooldown={snapshot.speedCooldown}
+          dodgeActive={snapshot.dodgeActive}
+          dodgeRemaining={snapshot.dodgeRemaining}
+          dodgeCooldown={snapshot.dodgeCooldown}
+          onSkillPress={handleSkillPress}
+        />
         {snapshot.items.map((item) => <FallingSnack key={item.id} item={item} />)}
         <ConfettiBurst pieces={snapshot.confetti} />
         <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} />
-        {DEBUG_HITBOXES && <DebugHitboxes items={snapshot.items} basketX={snapshot.basketX} />}
+        {debugMode && <DebugHitboxes items={snapshot.items} basketX={snapshot.basketX} />}
+        {gameOverHold && <GameOverHoldOverlay hold={gameOverHold} onConfirm={() => confirmGameOver(gameOverHold)} />}
+        {readyCountdown > 0 && !pauseOpen && !gameOverHold && <ReadyCountdownOverlay seconds={readyCountdown} />}
         {pauseOpen && (
           <PauseMenu
-            onResume={() => setPauseMenu(false)}
+            onResume={resumeFromPause}
             onRestart={restartFromPause}
             onEndGame={() => finishGame('Rush ended from pause menu!')}
             onMainMenu={mainMenuFromPause}
           />
         )}
       </div>
-      <AbilityPanel
-        dodgeActive={snapshot.dodgeActive}
-        dodgeRemaining={snapshot.dodgeRemaining}
-        dodgeCooldown={snapshot.dodgeCooldown}
-        speedActive={snapshot.speedActive}
-        speedRemaining={snapshot.speedRemaining}
-        speedCooldown={snapshot.speedCooldown}
-      />
     </section>
+  );
+}
+
+function GameOverHoldOverlay({ hold, onConfirm }) {
+  const shownTime = Math.max(0, Math.ceil(hold.timeLeft));
+
+  return (
+    <div className="gameover-hold-overlay" role="dialog" aria-modal="true" aria-label="Game over pause before results">
+      <div className="gameover-hold-card">
+        <span className="gameover-hold-eyebrow">Snack Rush crashed</span>
+        <strong>Game Over</strong>
+        <p>{hold.reason}</p>
+        <small>Continuing in {shownTime}s</small>
+        <button type="button" className="gameover-hold-button" onClick={onConfirm}>OK</button>
+      </div>
+    </div>
+  );
+}
+
+function ReadyCountdownOverlay({ seconds }) {
+  const number = Math.max(1, Math.ceil(seconds));
+
+  return (
+    <div className="ready-countdown-overlay" aria-live="polite" aria-label={`Game starts in ${number}`}>
+      <div className="ready-countdown-card">
+        <span>Get Ready</span>
+        <strong key={number}>{number}</strong>
+      </div>
+    </div>
   );
 }
 
@@ -579,11 +1026,30 @@ function Hud({ score, timeLeft, lives, combo }) {
   const timerMood = shownTime <= 5 ? 'timer-critical' : shownTime <= 10 ? 'timer-warning' : '';
 
   return (
-    <div className="hud">
-      <Stat label="Sugar Score" value={score.toString().padStart(4, '0')} />
-      <Stat label="Rush Clock" value={`${shownTime}s`} className={`timer-card ${timerMood}`} pulseKey={shownTime} />
-      <Stat label="Snack Hearts" value={'❤️'.repeat(Math.max(lives, 0)) || '💔'} />
-      <Stat label="Combo Pop" value={combo > 1 ? `x${combo}` : '—'} />
+    <div className="hud hud-redesign">
+      <Stat label="Sugar Score" value={score.toString().padStart(4, '0')} className="score-card compact-stat" />
+      <div className="timer-heart-stack">
+        <div className={`stat-card timer-card hero-timer ${timerMood}`}>
+          <span>Rush Clock</span>
+          <strong key={shownTime}>{`${shownTime}s`}</strong>
+          <HeartsDisplay lives={lives} />
+        </div>
+      </div>
+      <Stat label="Combo Pop" value={combo > 1 ? `x${combo}` : '—'} className="combo-card compact-stat" />
+    </div>
+  );
+}
+
+function HeartsDisplay({ lives }) {
+  const safeLives = Math.max(lives, 0);
+
+  return (
+    <div className="hearts-display" aria-label={`${safeLives} snack hearts left`}>
+      <div className="heart-row">
+        {Array.from({ length: STARTING_LIVES }, (_, index) => (
+          <b key={index} className={index < safeLives ? 'heart-full' : 'heart-empty'}>{index < safeLives ? '❤️' : '♡'}</b>
+        ))}
+      </div>
     </div>
   );
 }
@@ -592,48 +1058,83 @@ function formatAbilityTime(seconds) {
   return `${Math.ceil(seconds)}s`;
 }
 
-function abilityStatus(active, remaining, cooldown) {
-  if (active) return `Active ${formatAbilityTime(remaining)}`;
-  if (cooldown > 0) return `Cooldown ${formatAbilityTime(cooldown)}`;
-  return 'Ready';
+function getAbilityProgress(seconds, totalSeconds) {
+  return Math.max(0, Math.min(1, seconds / Math.max(totalSeconds, 1)));
 }
 
-function AbilityPanel({ dodgeActive, dodgeRemaining, dodgeCooldown, speedActive, speedRemaining, speedCooldown }) {
-  return (
-    <div className="ability-panel" aria-label="Ability cooldowns">
-      <AbilityCard
-        name="Boost"
-        keyName="Z"
-        detail="Faster basket movement"
-        variant="boost"
-        active={speedActive}
-        cooldown={speedCooldown}
-        value={abilityStatus(speedActive, speedRemaining, speedCooldown)}
-      />
-      <AbilityCard
-        name="Invincibility"
-        keyName="X"
-        detail="Rotten food passes through; snacks still count"
-        variant="invincibility"
-        active={dodgeActive}
-        cooldown={dodgeCooldown}
-        value={abilityStatus(dodgeActive, dodgeRemaining, dodgeCooldown)}
-      />
-    </div>
-  );
-}
+const SKILL_HOTKEYS = [
+  { id: 'boost', keyName: 'Z', label: 'Boost' },
+  { id: 'shield', keyName: 'X', label: 'Shield' },
+  { id: 'debug', keyName: 'H', label: 'Hitbox' },
+  { id: 'magnet', keyName: 'C', label: 'Magnet' },
+  { id: 'frenzy', keyName: 'V', label: 'Frenzy' },
+];
 
-function AbilityCard({ name, keyName, detail, active, cooldown, value, variant }) {
-  const statusClass = active ? 'active' : cooldown > 0 ? 'cooldown' : 'ready';
+function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, speedActive, speedRemaining, speedCooldown, dodgeActive, dodgeRemaining, dodgeCooldown, onSkillPress }) {
+  const getSkillState = (skill) => {
+    if (skill.id === 'boost') {
+      const active = speedActive;
+      const cooling = speedCooldown > 0;
+      const remaining = active ? speedRemaining : speedCooldown;
+      const total = active ? ABILITY_DURATION : ABILITY_COOLDOWN;
+      return {
+        shown: active || cooling,
+        disabled: paused || locked || active || cooling,
+        remaining,
+        total,
+      };
+    }
+
+    if (skill.id === 'shield') {
+      const active = dodgeActive;
+      const cooling = dodgeCooldown > 0;
+      const remaining = active ? dodgeRemaining : dodgeCooldown;
+      const total = active ? ABILITY_DURATION : ABILITY_COOLDOWN;
+      return {
+        shown: active || cooling,
+        disabled: paused || locked || active || cooling,
+        remaining,
+        total,
+      };
+    }
+
+    const remaining = skill.id === 'debug' && debugMode
+      ? skillPressTimers.debug || 5
+      : skillPressTimers[skill.id] || 0;
+
+    return {
+      shown: remaining > 0 || (skill.id === 'debug' && debugMode),
+      disabled: paused || locked || remaining > 0 || (skill.id === 'debug' && debugMode),
+      remaining,
+      total: 5,
+    };
+  };
 
   return (
-    <div className={`ability-card ${variant} ${statusClass}`}>
-      <div>
-        <span>{name}</span>
-        <strong>{value}</strong>
-        <small>{detail}</small>
+    <div className="skills-hotkeys-panel" aria-label="Skill buttons">
+      <div className="skills-hotkeys-row">
+        {SKILL_HOTKEYS.map((skill) => {
+          const state = getSkillState(skill);
+          const progress = getAbilityProgress(state.remaining || (state.shown ? state.total : 0), state.total);
+          const sweep = `${Math.round(progress * 360)}deg`;
+
+          return (
+            <button
+              key={skill.id}
+              type="button"
+              className={`skill-hotkey ${skill.id} ${state.shown ? 'active' : ''}`}
+              style={{ '--cooldown-sweep': sweep }}
+              onClick={() => onSkillPress(skill.id)}
+              aria-label={`${skill.label} skill hotkey`}
+              disabled={state.disabled}
+            >
+              <span className="skill-cooldown-wipe" aria-hidden="true" />
+              <kbd>{skill.keyName}</kbd>
+              <small>{state.shown ? formatAbilityTime(state.remaining || state.total) : skill.label}</small>
+            </button>
+          );
+        })}
       </div>
-      <kbd>{keyName}</kbd>
     </div>
   );
 }
@@ -672,10 +1173,12 @@ function DebugHitboxes({ items, basketX }) {
     <div className="debug-hitbox-layer" aria-hidden="true">
       <div
         className="debug-hitbox basket-box"
+        data-label="basket"
         style={{ left: basketX, top: GAME_HEIGHT - BASKET_BOTTOM_OFFSET - BASKET_HEIGHT, width: BASKET_WIDTH, height: BASKET_HEIGHT }}
       />
       <div
         className="debug-hitbox catch-zone"
+        data-label="catch zone"
         style={{ left: catchZone.left, top: catchZone.top, width: catchZone.right - catchZone.left, height: catchZone.bottom - catchZone.top }}
       />
       {items.map((item) => {
@@ -683,9 +1186,10 @@ function DebugHitboxes({ items, basketX }) {
 
         return (
           <Fragment key={`debug-${item.id}`}>
-            <div className="debug-hitbox sprite-box" style={{ left: item.x, top: item.y, width: ITEM_SIZE, height: ITEM_SIZE }} />
+            <div className="debug-hitbox sprite-box" data-label="sprite" style={{ left: item.x, top: item.y, width: ITEM_SIZE, height: ITEM_SIZE }} />
             <div
               className={`debug-hitbox item-hitbox ${item.type}`}
+              data-label="item hitbox"
               style={{ left: hitbox.left, top: hitbox.top, width: hitbox.right - hitbox.left, height: hitbox.bottom - hitbox.top }}
             />
           </Fragment>
@@ -699,7 +1203,7 @@ function FallingSnack({ item }) {
   return (
     <div
       className={`falling-snack ${item.type} ${item.spin}`}
-      style={{ transform: `translate(${item.x}px, ${item.y}px)` }}
+      style={{ left: item.x, top: item.y }}
       aria-hidden="true"
     >
       {item.emoji}
@@ -730,6 +1234,8 @@ function Basket({ x, evading, speeding, movementDirection }) {
 
   return (
     <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''} ${movementClass}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
+      <div className="boost-aura" />
+      <div className="boost-flame" />
       <div className="boost-wind wind-one" />
       <div className="boost-wind wind-two" />
       <div className="boost-spark spark-one" />
@@ -745,32 +1251,51 @@ function Basket({ x, evading, speeding, movementDirection }) {
   );
 }
 
-function Leaderboard({ entries, title = 'Leaderboard', subtitle = 'Local scores only', highlightRank = null }) {
+function Leaderboard({ entries, title, subtitle, highlightRank = null }) {
   return (
-    <aside className="leaderboard-card" aria-label={title}>
+    <section className="leaderboard-card" aria-label={title}>
       <div className="leaderboard-header">
-        <span className="leaderboard-crown" aria-hidden="true">🏆</span>
+        <div className="leaderboard-crown" aria-hidden="true">🏆</div>
         <div>
           <h2>{title}</h2>
           <p>{subtitle}</p>
         </div>
       </div>
+
       <ol className="leaderboard-list">
-        {entries.map((entry, index) => (
-          <li key={entry.id} className={`${entry.isPlayer ? 'player-score' : ''} ${highlightRank === index + 1 ? 'new-score' : ''}`}>
-            <span className="leaderboard-rank">#{index + 1}</span>
-            <span className="leaderboard-name">
-              {entry.name}
-              <small>{entry.tag}</small>
-            </span>
-            <span className="leaderboard-score">
-              {entry.score}
-              <small>{entry.caught} caught</small>
-            </span>
-          </li>
-        ))}
+        {entries.map((entry, index) => {
+          const rank = index + 1;
+          const isHighlighted = highlightRank === rank;
+
+          return (
+            <li
+              key={entry.id}
+              className={[
+                `rank-${rank}`,
+                entry.isPlayer ? 'player-score' : '',
+                isHighlighted ? 'new-score' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              {rank === 1 && (
+                <span className="leaderboard-top-crown" aria-hidden="true">👑</span>
+              )}
+
+              <span className="leaderboard-rank">#{rank}</span>
+
+              <div className="leaderboard-name">
+                <span>{entry.name}</span>
+                <small>{entry.tag}</small>
+              </div>
+
+              <div className="leaderboard-score">
+                <span>{entry.score}</span>
+                <small>{entry.caught} caught</small>
+              </div>
+            </li>
+          );
+        })}
       </ol>
-    </aside>
+    </section>
   );
 }
 
@@ -778,33 +1303,89 @@ function GameOverScreen({ stats, leaderboard, onRestart, onMainMenu }) {
   const title = stats.score >= 350 ? 'Sugar Legend!' : stats.score >= 180 ? 'Snack Champ!' : 'Rush Over!';
   const medal = stats.score >= 350 ? '🏆' : stats.score >= 180 ? '🎖️' : '🍬';
   const board = stats.leaderboard || leaderboard;
+  const madeTopThree = Boolean(stats.leaderboardRank && stats.leaderboardRank <= 3);
+
+  const [leaderboardOpen, setLeaderboardOpen] = useState(madeTopThree);
+
   const leaderboardSubtitle = stats.leaderboardRank
     ? `New local rank #${stats.leaderboardRank}!`
     : `Beat #1: ${board[0]?.score || 0} points`;
 
   return (
-    <section className="panel gameover-panel pop-panel">
+    <section className={`panel gameover-panel pop-panel ${madeTopThree ? 'top-three-win' : ''}`}>
       <div className="menu-sparkle sparkle-left" aria-hidden="true">✦</div>
       <div className="menu-sparkle sparkle-right" aria-hidden="true">✦</div>
-      <p className="eyebrow hero-eyebrow">{stats.reason}</p>
-      <div className="result-badge" aria-hidden="true">{medal}</div>
+
+      <p className="eyebrow hero-eyebrow gameover-reason">{stats.reason}</p>
+
+      <div className="result-badge gameover-medal" aria-hidden="true">{medal}</div>
+
       <h1 className="gameover-title">{title}</h1>
-      <p className="tagline result-tagline">The candy counter is closed. Count your loot, dodge the stink, and rush again!</p>
-      <div className="score-summary result-grid">
+
+      <div className="gameover-button-row">
+        <button className="secondary-button gameover-side-button" type="button" onClick={onMainMenu}>
+          Main Menu
+        </button>
+
+        <button className="primary-button jumbo-button gameover-play-button" type="button" onClick={onRestart}>
+          Play Again
+        </button>
+
+        <button className="secondary-button gameover-side-button" type="button" onClick={() => setLeaderboardOpen(true)}>
+          Leaderboards
+        </button>
+      </div>
+
+      <div className="score-summary result-grid gameover-score-cards">
         <div>
           <span>Final Score</span>
-          <strong>{stats.score}</strong>
+          <strong className={`score-number digits-${String(stats.score).length}`}>
+            {stats.score}
+          </strong>
         </div>
         <div>
           <span>Snacks Caught</span>
-          <strong>{stats.caught}</strong>
+          <strong className={`score-number digits-${String(stats.caught).length}`}>
+            {stats.caught}
+          </strong>
         </div>
       </div>
-      <Leaderboard entries={board} title="Local leaderboard" subtitle={leaderboardSubtitle} highlightRank={stats.leaderboardRank} />
-      <div className="gameover-actions">
-        <button className="primary-button jumbo-button" onClick={onRestart}>Play Again</button>
-        <button className="secondary-button" onClick={onMainMenu}>Main Menu</button>
-      </div>
+
+      <p className="tagline result-tagline gameover-bottom-text">
+        The candy counter is closed. Count your loot, dodge the stink, and rush again!
+      </p>
+
+      {leaderboardOpen && (
+        <div className="leaderboard-modal-overlay" role="dialog" aria-modal="true" aria-label="Local leaderboard">
+          <div className="leaderboard-modal-card">
+            {madeTopThree && (
+              <div className="modal-confetti-layer" aria-hidden="true">
+                {Array.from({ length: 28 }, (_, index) => (
+                  <span key={index} />
+                ))}
+              </div>
+            )}
+
+            {madeTopThree && <p className="leaderboard-popout-badge">Top 3!</p>}
+
+            <button
+              className="leaderboard-modal-close"
+              type="button"
+              onClick={() => setLeaderboardOpen(false)}
+              aria-label="Close leaderboard"
+            >
+              ×
+            </button>
+
+            <Leaderboard
+              entries={board}
+              title="Local leaderboard"
+              subtitle={leaderboardSubtitle}
+              highlightRank={stats.leaderboardRank}
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 }
