@@ -93,9 +93,13 @@ assert(css.includes('.skills-hotkeys-panel'), 'skills hotkeys panel styles shoul
 assert(!app.includes('className="skills-title"'), 'skills hotkeys text label should be removed for a compact panel');
 assert(css.includes('.skill-cooldown-wipe') && css.includes('conic-gradient(from -90deg'), 'skills cooldown should use a clock-wipe style radial mask');
 assert(app.includes("'--cooldown-sweep': sweep"), 'skill cooldown wipe should receive live sweep styling');
-assert(app.includes('disabled={state.disabled}') && app.includes('speedCooldown') && app.includes('dodgeCooldown'), 'skill buttons should disable during pause and cooldown states');
-assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'frenzy'") && app.includes("id: 'magnet'"), 'skills hotkeys should expose five skill buttons');
-assert(app.includes("key === 'c'") && app.includes("key === 'v'"), 'placeholder skill hotkeys should respond from keyboard');
+assert(app.includes('GLOBAL_SKILL_COOLDOWN = 7') && app.includes('RANDOM_SPECIAL_COOLDOWN = 15'), 'skills should use the planned 7s global cooldown and 15s random special cooldown');
+assert(app.includes('DASH_DISTANCE') && app.includes('DASH_IFRAME_SECONDS = 0.5'), 'dash should be an actual movement skill with 0.5s iframes');
+assert(app.includes('DOUBLE_POINTS_DURATION = 5') && app.includes('DOUBLE_POINTS_SLOW_MULTIPLIER'), 'double points should be an actual 5s skill with lingering slow');
+assert(app.includes('disabled={state.disabled}') && app.includes('globalSkillCooldown') && app.includes('randomSpecialCooldown'), 'skill buttons should disable during pause, global cooldown, and random-special cooldown states');
+assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'dash'") && app.includes("id: 'doublePoints'") && app.includes("id: 'randomSpecial'"), 'skills hotkeys should expose dash, shield, double points, and random special');
+assert(!app.includes("id: 'frenzy'") && !app.includes("id: 'magnet'") && !app.includes("id: 'boost'"), 'old boost/magnet/frenzy placeholder skills should be removed');
+assert(app.includes("key === 'c'") && app.includes("key === 'v'") && app.includes("handleSkillPress('doublePoints')") && app.includes("handleSkillPress('randomSpecial')"), 'new skill hotkeys should respond from keyboard');
 assert(app.includes('skillPressTimers'), 'clicking a skill should show a countdown timer');
 assert(!app.includes('function AbilityPanel'), 'old bottom skills panels should be removed');
 assert(css.includes('.debug-hitbox::after'), 'debug hitboxes should display labels');

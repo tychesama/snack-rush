@@ -11,9 +11,15 @@ const ITEM_HITBOX_BOTTOM_INSET = 8;
 const GAME_SECONDS = 45;
 const STARTING_LIVES = 3;
 const PLAYER_SPEED = 520;
-const SPEEDUP_MULTIPLIER = 1.65;
-const ABILITY_DURATION = 5;
-const ABILITY_COOLDOWN = 10;
+const GLOBAL_SKILL_COOLDOWN = 7;
+const DASH_DISTANCE = 170;
+const DASH_IFRAME_SECONDS = 0.5;
+const SHIELD_DURATION = 3;
+const DOUBLE_POINTS_DURATION = 5;
+const DOUBLE_POINTS_SLOW_DURATION = 2;
+const DOUBLE_POINTS_SLOW_MULTIPLIER = 0.75;
+const RANDOM_SPECIAL_COOLDOWN = 15;
+const SKILL_PRESS_FEEDBACK_SECONDS = 0.45;
 const READY_COUNTDOWN_SECONDS = 3;
 const GAME_OVER_HOLD_SECONDS = 5;
 const BASKET_BOTTOM_OFFSET = 8;
@@ -361,7 +367,7 @@ function InfoModal({ open, onClose, socialLinks }) {
 
           <section className="info-mechanic-card wide">
             <strong>Skills</strong>
-            <small>Z Dash, X Shield, C Double Points, and V Random Special are the planned skill layout. Skills share a global cooldown in the refinement plan.</small>
+            <small>Z Dash, X Shield, C Double Points, and V Random Special are live in-game skills. Skill use starts a shared 7-second global cooldown.</small>
           </section>
         </div>
 
@@ -504,10 +510,10 @@ function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfil
 
 function ControlsPanel() {
   const skills = [
-    { id: 'dash', key: 'Z', name: 'Dash', tone: 'skill-ready', tooltip: 'Planned skill: dash in your current move direction with brief invincibility frames.' },
-    { id: 'shield', key: 'X', name: 'Shield', tone: 'skill-ready', tooltip: 'Planned skill: block rotten hits for a short burst.' },
-    { id: 'double-points', key: 'C', name: 'Double Points', tone: 'skill-ready', tooltip: 'Planned skill: double your score gains for 5 seconds before a lingering slow.' },
-    { id: 'random-special', key: 'V', name: 'Random Special', tone: 'skill-ready', tooltip: 'Planned skill: instantly trigger one random special effect.' },
+    { id: 'dash', key: 'Z', name: 'Dash', tone: 'skill-ready', tooltip: 'Dash in your current move direction and gain 0.5 seconds of invincibility frames.' },
+    { id: 'shield', key: 'X', name: 'Shield', tone: 'skill-ready', tooltip: 'Block rotten hits for 3 seconds. Shares the 7-second global skill cooldown.' },
+    { id: 'double-points', key: 'C', name: 'Double Points', tone: 'skill-ready', tooltip: 'Double your score gains for 5 seconds, then suffer a brief lingering slow.' },
+    { id: 'random-special', key: 'V', name: 'Random Special', tone: 'skill-ready', tooltip: 'Instantly trigger one random special effect with its own 15-second cooldown.' },
   ];
   const specialItems = [
     { emoji: '⭐', name: 'Star', tooltip: 'Bonus pickup. Grab it for a premium score pop.' },
@@ -607,10 +613,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     confetti: [],
     dodgeActive: false,
     dodgeRemaining: 0,
-    dodgeCooldown: 0,
-    speedActive: false,
-    speedRemaining: 0,
-    speedCooldown: 0,
+    globalSkillCooldown: 0,
+    dashIframeRemaining: 0,
+    doublePointsActive: false,
+    doublePointsRemaining: 0,
+    doublePointsSlowRemaining: 0,
+    randomSpecialCooldown: 0,
+    randomSpecialLabel: '',
   });
 
   const stateRef = useRef({
@@ -628,10 +637,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     confetti: [],
     dodgeActive: false,
     dodgeRemaining: 0,
-    dodgeCooldown: 0,
-    speedActive: false,
-    speedRemaining: 0,
-    speedCooldown: 0,
+    globalSkillCooldown: 0,
+    dashIframeRemaining: 0,
+    doublePointsActive: false,
+    doublePointsRemaining: 0,
+    doublePointsSlowRemaining: 0,
+    randomSpecialCooldown: 0,
+    randomSpecialLabel: '',
     failReason: '',
     elapsed: 0,
     spawnClock: 0,
@@ -693,42 +705,99 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     onMainMenu();
   }, [onMainMenu, setPauseMenu]);
 
-  const pulseSkillCountdown = useCallback((skillId) => {
-    skillPressTimersRef.current = { ...skillPressTimersRef.current, [skillId]: 5 };
+  const pulseSkillCountdown = useCallback((skillId, seconds = SKILL_PRESS_FEEDBACK_SECONDS) => {
+    skillPressTimersRef.current = { ...skillPressTimersRef.current, [skillId]: seconds };
     setSkillPressTimers(skillPressTimersRef.current);
   }, []);
 
-  const activateAbility = useCallback((ability) => {
+  const applyRandomSpecial = useCallback(() => {
     const state = stateRef.current;
-    const activeKey = `${ability}Active`;
-    const remainingKey = `${ability}Remaining`;
-    const cooldownKey = `${ability}Cooldown`;
+    const special = ['star', 'gem', 'heart', 'nuke'][Math.floor(Math.random() * 4)];
 
-    if (state[activeKey] || state[cooldownKey] > 0) return false;
-    state[activeKey] = true;
-    state[remainingKey] = ABILITY_DURATION;
-    return true;
+    if (special === 'star') {
+      state.dodgeActive = true;
+      state.dodgeRemaining = Math.max(state.dodgeRemaining, SHIELD_DURATION);
+      state.randomSpecialLabel = 'Star Shield';
+      state.flash = 'bonus';
+      return;
+    }
+
+    if (special === 'gem') {
+      state.score += 75;
+      state.randomSpecialLabel = '+75 Gem';
+      state.flash = 'bonus';
+      return;
+    }
+
+    if (special === 'heart') {
+      state.lives = Math.min(STARTING_LIVES, state.lives + 1);
+      state.randomSpecialLabel = 'Heart';
+      state.flash = 'sweet';
+      return;
+    }
+
+    state.items = [];
+    state.randomSpecialLabel = 'Nuke';
+    state.flash = 'bonus';
   }, []);
 
   const canTriggerSkill = useCallback((skillId) => {
     if (pauseOpenRef.current || readyCountdownRef.current > 0 || gameOverHoldRef.current) return false;
 
-    const state = stateRef.current;
-    if (skillId === 'boost') return !state.speedActive && state.speedCooldown <= 0;
-    if (skillId === 'shield') return !state.dodgeActive && state.dodgeCooldown <= 0;
     if (skillId === 'debug') return !debugMode && !skillPressTimersRef.current.debug;
-    if (skillId === 'magnet' || skillId === 'frenzy') return !skillPressTimersRef.current[skillId];
+
+    const state = stateRef.current;
+    if (state.globalSkillCooldown > 0) return false;
+    if (skillId === 'dash') return (state.movementDirection !== 0 || Number(keysRef.current.right) - Number(keysRef.current.left) !== 0) && state.dashIframeRemaining <= 0;
+    if (skillId === 'shield') return !state.dodgeActive;
+    if (skillId === 'doublePoints') return !state.doublePointsActive;
+    if (skillId === 'randomSpecial') return state.randomSpecialCooldown <= 0;
     return false;
   }, [debugMode]);
 
   const handleSkillPress = useCallback((skillId) => {
     if (!canTriggerSkill(skillId)) return;
-    pulseSkillCountdown(skillId);
 
-    if (skillId === 'boost') activateAbility('speed');
-    if (skillId === 'shield') activateAbility('dodge');
-    if (skillId === 'debug') setDebugMode((enabled) => !enabled);
-  }, [activateAbility, canTriggerSkill, pulseSkillCountdown]);
+    const state = stateRef.current;
+
+    if (skillId === 'debug') {
+      pulseSkillCountdown('debug');
+      setDebugMode((enabled) => !enabled);
+      return;
+    }
+
+    state.globalSkillCooldown = GLOBAL_SKILL_COOLDOWN;
+    pulseSkillCountdown(skillId, GLOBAL_SKILL_COOLDOWN);
+
+    if (skillId === 'dash') {
+      const direction = state.movementDirection || Number(keysRef.current.right) - Number(keysRef.current.left);
+      if (direction === 0) {
+        state.globalSkillCooldown = 0;
+        return;
+      }
+      state.basketX = clamp(state.basketX + direction * DASH_DISTANCE, 12, GAME_WIDTH - BASKET_WIDTH - 12);
+      state.dashIframeRemaining = DASH_IFRAME_SECONDS;
+      state.flash = 'bonus';
+    }
+
+    if (skillId === 'shield') {
+      state.dodgeActive = true;
+      state.dodgeRemaining = SHIELD_DURATION;
+      state.flash = 'bonus';
+    }
+
+    if (skillId === 'doublePoints') {
+      state.doublePointsActive = true;
+      state.doublePointsRemaining = DOUBLE_POINTS_DURATION;
+      state.doublePointsSlowRemaining = 0;
+      state.flash = 'bonus';
+    }
+
+    if (skillId === 'randomSpecial') {
+      state.randomSpecialCooldown = RANDOM_SPECIAL_COOLDOWN;
+      applyRandomSpecial();
+    }
+  }, [applyRandomSpecial, canTriggerSkill, pulseSkillCountdown]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -759,9 +828,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       if (event.key === 'ArrowRight' || key === 'd') keysRef.current.right = true;
       if (event.repeat) return;
       if (key === 'x') handleSkillPress('shield');
-      if (key === 'z') handleSkillPress('boost');
-      if (key === 'c') handleSkillPress('magnet');
-      if (key === 'v') handleSkillPress('frenzy');
+      if (key === 'z') handleSkillPress('dash');
+      if (key === 'c') handleSkillPress('doublePoints');
+      if (key === 'v') handleSkillPress('randomSpecial');
     };
     const onKeyUp = (event) => {
       const key = event.key.toLowerCase();
@@ -833,30 +902,29 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
 
       const direction = Number(keysRef.current.right) - Number(keysRef.current.left);
 
+      state.globalSkillCooldown = Math.max(0, state.globalSkillCooldown - delta);
+      state.randomSpecialCooldown = Math.max(0, state.randomSpecialCooldown - delta);
+      state.dashIframeRemaining = Math.max(0, state.dashIframeRemaining - delta);
+
       if (state.dodgeActive) {
         state.dodgeRemaining = Math.max(0, state.dodgeRemaining - delta);
-        if (state.dodgeRemaining === 0) {
-          state.dodgeActive = false;
-          state.dodgeCooldown = ABILITY_COOLDOWN;
-        }
-      } else if (state.dodgeCooldown > 0) {
-        state.dodgeCooldown = Math.max(0, state.dodgeCooldown - delta);
+        if (state.dodgeRemaining === 0) state.dodgeActive = false;
       }
 
-      if (state.speedActive) {
-        state.speedRemaining = Math.max(0, state.speedRemaining - delta);
-        if (state.speedRemaining === 0) {
-          state.speedActive = false;
-          state.speedCooldown = ABILITY_COOLDOWN;
+      if (state.doublePointsActive) {
+        state.doublePointsRemaining = Math.max(0, state.doublePointsRemaining - delta);
+        if (state.doublePointsRemaining === 0) {
+          state.doublePointsActive = false;
+          state.doublePointsSlowRemaining = DOUBLE_POINTS_SLOW_DURATION;
         }
-      } else if (state.speedCooldown > 0) {
-        state.speedCooldown = Math.max(0, state.speedCooldown - delta);
+      } else if (state.doublePointsSlowRemaining > 0) {
+        state.doublePointsSlowRemaining = Math.max(0, state.doublePointsSlowRemaining - delta);
       }
 
-      state.evading = state.dodgeActive;
-      state.speeding = state.speedActive;
+      state.evading = state.dodgeActive || state.dashIframeRemaining > 0;
+      state.speeding = state.dashIframeRemaining > 0;
       state.movementDirection = direction;
-      const currentSpeed = PLAYER_SPEED * (state.speeding ? SPEEDUP_MULTIPLIER : 1);
+      const currentSpeed = PLAYER_SPEED * (state.doublePointsSlowRemaining > 0 ? DOUBLE_POINTS_SLOW_MULTIPLIER : 1);
       const previousBasketX = state.basketX;
       state.basketX = clamp(state.basketX + direction * currentSpeed * delta, 12, GAME_WIDTH - BASKET_WIDTH - 12);
 
@@ -895,7 +963,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
 
         if (basketCatchesItem(item, updated, state.basketX, previousBasketX)) {
           if (updated.type === 'rotten') {
-            if (state.dodgeActive) {
+            if (state.dodgeActive || state.dashIframeRemaining > 0) {
               survivors.push(updated);
               continue;
             }
@@ -908,7 +976,8 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
             state.combo += 1;
             const basePoints = updated.type === 'bonus' ? 25 : 10;
             const comboBonus = Math.min(20, Math.floor(state.combo / 4) * 5);
-            state.score += basePoints + comboBonus;
+            const earnedPoints = (basePoints + comboBonus) * (state.doublePointsActive ? 2 : 1);
+            state.score += earnedPoints;
             state.caught += 1;
             state.flash = updated.type === 'bonus' ? 'bonus' : 'sweet';
             const burst = makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId);
@@ -953,10 +1022,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           confetti: state.confetti,
           dodgeActive: state.dodgeActive,
           dodgeRemaining: state.dodgeRemaining,
-          dodgeCooldown: state.dodgeCooldown,
-          speedActive: state.speedActive,
-          speedRemaining: state.speedRemaining,
-          speedCooldown: state.speedCooldown,
+          globalSkillCooldown: state.globalSkillCooldown,
+          dashIframeRemaining: state.dashIframeRemaining,
+          doublePointsActive: state.doublePointsActive,
+          doublePointsRemaining: state.doublePointsRemaining,
+          doublePointsSlowRemaining: state.doublePointsSlowRemaining,
+          randomSpecialCooldown: state.randomSpecialCooldown,
+          randomSpecialLabel: state.randomSpecialLabel,
         });
         if (state.flash) state.flash = '';
       }
@@ -982,12 +1054,16 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           paused={pauseOpen}
           locked={Boolean(gameOverHold) || readyCountdown > 0}
           skillPressTimers={skillPressTimers}
-          speedActive={snapshot.speedActive}
-          speedRemaining={snapshot.speedRemaining}
-          speedCooldown={snapshot.speedCooldown}
+          movementDirection={snapshot.movementDirection}
+          globalSkillCooldown={snapshot.globalSkillCooldown}
+          dashIframeRemaining={snapshot.dashIframeRemaining}
           dodgeActive={snapshot.dodgeActive}
           dodgeRemaining={snapshot.dodgeRemaining}
-          dodgeCooldown={snapshot.dodgeCooldown}
+          doublePointsActive={snapshot.doublePointsActive}
+          doublePointsRemaining={snapshot.doublePointsRemaining}
+          doublePointsSlowRemaining={snapshot.doublePointsSlowRemaining}
+          randomSpecialCooldown={snapshot.randomSpecialCooldown}
+          randomSpecialLabel={snapshot.randomSpecialLabel}
           onSkillPress={handleSkillPress}
         />
         {snapshot.items.map((item) => <FallingSnack key={item.id} item={item} />)}
@@ -1080,51 +1156,71 @@ function getAbilityProgress(seconds, totalSeconds) {
 }
 
 const SKILL_HOTKEYS = [
-  { id: 'boost', keyName: 'Z', label: 'Boost' },
+  { id: 'dash', keyName: 'Z', label: 'Dash' },
   { id: 'shield', keyName: 'X', label: 'Shield' },
+  { id: 'doublePoints', keyName: 'C', label: '2x Points' },
+  { id: 'randomSpecial', keyName: 'V', label: 'Random' },
   { id: 'debug', keyName: 'H', label: 'Hitbox' },
-  { id: 'magnet', keyName: 'C', label: 'Magnet' },
-  { id: 'frenzy', keyName: 'V', label: 'Frenzy' },
 ];
 
-function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, speedActive, speedRemaining, speedCooldown, dodgeActive, dodgeRemaining, dodgeCooldown, onSkillPress }) {
+function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movementDirection, globalSkillCooldown, dashIframeRemaining, dodgeActive, dodgeRemaining, doublePointsActive, doublePointsRemaining, doublePointsSlowRemaining, randomSpecialCooldown, randomSpecialLabel, onSkillPress }) {
   const getSkillState = (skill) => {
-    if (skill.id === 'boost') {
-      const active = speedActive;
-      const cooling = speedCooldown > 0;
-      const remaining = active ? speedRemaining : speedCooldown;
-      const total = active ? ABILITY_DURATION : ABILITY_COOLDOWN;
+    if (skill.id === 'debug') {
+      const remaining = debugMode ? skillPressTimers.debug || SKILL_PRESS_FEEDBACK_SECONDS : skillPressTimers.debug || 0;
       return {
-        shown: active || cooling,
-        disabled: paused || locked || active || cooling,
+        shown: remaining > 0 || debugMode,
+        disabled: paused || locked || remaining > 0 || debugMode,
         remaining,
-        total,
+        total: SKILL_PRESS_FEEDBACK_SECONDS,
+        label: skill.label,
+      };
+    }
+
+    if (skill.id === 'dash') {
+      const remaining = dashIframeRemaining > 0 ? dashIframeRemaining : globalSkillCooldown;
+      return {
+        shown: remaining > 0,
+        disabled: paused || locked || globalSkillCooldown > 0 || !movementDirection,
+        remaining,
+        total: dashIframeRemaining > 0 ? DASH_IFRAME_SECONDS : GLOBAL_SKILL_COOLDOWN,
+        label: !movementDirection && globalSkillCooldown <= 0 ? 'Move First' : skill.label,
       };
     }
 
     if (skill.id === 'shield') {
-      const active = dodgeActive;
-      const cooling = dodgeCooldown > 0;
-      const remaining = active ? dodgeRemaining : dodgeCooldown;
-      const total = active ? ABILITY_DURATION : ABILITY_COOLDOWN;
+      const remaining = dodgeActive ? dodgeRemaining : globalSkillCooldown;
       return {
-        shown: active || cooling,
-        disabled: paused || locked || active || cooling,
+        shown: remaining > 0,
+        disabled: paused || locked || globalSkillCooldown > 0 || dodgeActive,
         remaining,
-        total,
+        total: dodgeActive ? SHIELD_DURATION : GLOBAL_SKILL_COOLDOWN,
+        label: skill.label,
       };
     }
 
-    const remaining = skill.id === 'debug' && debugMode
-      ? skillPressTimers.debug || 5
-      : skillPressTimers[skill.id] || 0;
+    if (skill.id === 'doublePoints') {
+      const remaining = doublePointsActive ? doublePointsRemaining : doublePointsSlowRemaining > 0 ? doublePointsSlowRemaining : globalSkillCooldown;
+      return {
+        shown: remaining > 0,
+        disabled: paused || locked || globalSkillCooldown > 0 || doublePointsActive,
+        remaining,
+        total: doublePointsActive ? DOUBLE_POINTS_DURATION : doublePointsSlowRemaining > 0 ? DOUBLE_POINTS_SLOW_DURATION : GLOBAL_SKILL_COOLDOWN,
+        label: doublePointsSlowRemaining > 0 ? 'Slow' : skill.label,
+      };
+    }
 
-    return {
-      shown: remaining > 0 || (skill.id === 'debug' && debugMode),
-      disabled: paused || locked || remaining > 0 || (skill.id === 'debug' && debugMode),
-      remaining,
-      total: 5,
-    };
+    if (skill.id === 'randomSpecial') {
+      const remaining = Math.max(globalSkillCooldown, randomSpecialCooldown);
+      return {
+        shown: remaining > 0,
+        disabled: paused || locked || globalSkillCooldown > 0 || randomSpecialCooldown > 0,
+        remaining,
+        total: randomSpecialCooldown > globalSkillCooldown ? RANDOM_SPECIAL_COOLDOWN : GLOBAL_SKILL_COOLDOWN,
+        label: skill.label,
+      };
+    }
+
+    return { shown: false, disabled: paused || locked, remaining: 0, total: GLOBAL_SKILL_COOLDOWN, label: skill.label };
   };
 
   return (
@@ -1147,7 +1243,7 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, speed
             >
               <span className="skill-cooldown-wipe" aria-hidden="true" />
               <kbd>{skill.keyName}</kbd>
-              <small>{state.shown ? formatAbilityTime(state.remaining || state.total) : skill.label}</small>
+              <small>{state.shown ? formatAbilityTime(state.remaining || state.total) : state.label}</small>
             </button>
           );
         })}
