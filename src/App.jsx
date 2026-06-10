@@ -315,6 +315,8 @@ function SocialIcon({ link }) {
 function InfoModal({ open, onClose, socialLinks }) {
   if (!open) return null;
 
+  const goodItems = ['🍩', '🧁', '🍪', '🍭'];
+  const badItems = ['☠️', '🤮', '🦠', '💀'];
 
   return (
     <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>

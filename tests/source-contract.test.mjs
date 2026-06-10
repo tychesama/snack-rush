@@ -52,6 +52,8 @@ assert(css.includes('.player-name-modal-card'), 'player name change modal styles
 
 assert(app.includes('function ControlsPanel'), 'start screen should use the one-panel controls component');
 assert(app.includes('function InfoModal') && app.includes('snackrush-info-modal'), 'start screen should expose a combined info modal for mechanics and links');
+const infoModalSource = app.slice(app.indexOf('function InfoModal'), app.indexOf('function PlayerNameModal'));
+assert(infoModalSource.includes('const goodItems') && infoModalSource.includes('const badItems'), 'info modal should define its Catch/Avoid item lists before rendering');
 assert(app.indexOf('</section>') < app.indexOf('<InfoModal open={infoOpen}'), 'start modals should render outside the clipped pop-panel');
 assert(app.includes('start-action-row') && app.includes('menu-info-button') && app.includes('player-name-button'), 'start screen should place info and player name buttons around Start Rush');
 assert(app.includes("iconSrc: '/social-icons/tychefolio-favicon.svg'") && app.includes("iconSrc: '/social-icons/game-center-favicon.svg'"), 'website and game center should use copied favicon assets');
