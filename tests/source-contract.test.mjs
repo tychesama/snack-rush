@@ -77,7 +77,7 @@ assert(css.includes('.control-key:hover'), 'designed key controls should be hove
 assert(app.includes('Control Panel') && !app.includes('How to play'), 'main menu controls should keep the compact heading without the old badge');
 assert(css.includes('.menu-modal-overlay') && css.includes('.info-modal-card') && css.includes('.modal-social-logo-row'), 'combined info modal styles should exist');
 assert(css.includes('.info-modal-card') && css.includes('overflow: hidden') && css.includes('.socials-content-grid'), 'info modal should hide scrollbars and use the socials panel space');
-assert(app.includes('leaderboard-medal') && css.includes('.leaderboard-medal') && css.includes('leaderboard-top-crown'), 'leaderboard top 3 should include medal styling and a bounded crown');
+assert(!app.includes('leaderboard-medal') && css.includes('leaderboard-top-crown') && css.includes('Revert leaderboard polish; keep top crown visible'), 'leaderboard should stay simple while keeping the top crown visible inside bounds');
 assert(app.includes('main-controls-top-grid') && css.includes('.main-controls-top-grid'), 'control panel should use a compact top grid layout');
 assert(!app.includes('main-section-kicker') && app.includes('main-rule-label') && !app.includes('main-rule-kicker'), 'control panel should use plain text labels instead of circular badge labels');
 assert(app.includes('Move Basket') && app.includes('Skills') && app.includes('Catch') && app.includes('Avoid') && app.includes('Specials'), 'menu and info modal should show plain text section labels');

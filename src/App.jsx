@@ -1298,7 +1298,6 @@ function Leaderboard({ entries, title, subtitle, highlightRank = null }) {
               )}
 
               <span className="leaderboard-rank">#{rank}</span>
-              {rank <= 3 && <span className="leaderboard-medal" aria-hidden="true">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>}
 
               <div className="leaderboard-name">
                 <span>{entry.name}</span>
