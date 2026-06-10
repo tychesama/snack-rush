@@ -433,55 +433,57 @@ function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfil
   ];
 
   return (
-    <section className="panel start-panel pop-panel">
-      <div className="menu-sparkle sparkle-left" aria-hidden="true">✦</div>
-      <div className="menu-sparkle sparkle-right" aria-hidden="true">✦</div>
+    <>
+      <section className="panel start-panel pop-panel">
+        <div className="menu-sparkle sparkle-left" aria-hidden="true">✦</div>
+        <div className="menu-sparkle sparkle-right" aria-hidden="true">✦</div>
 
-      <p className="eyebrow hero-eyebrow">TYCHE CANDY SHOP PRESENTS</p>
+        <p className="eyebrow hero-eyebrow">TYCHE CANDY SHOP PRESENTS</p>
 
-      <div className="title-stack main-menu-title" aria-label="SnackRush">
-        <span className="title-candy" aria-hidden="true">🍬</span>
-        <h1>SnackRush</h1>
-        <span className="title-candy" aria-hidden="true">🍭</span>
-      </div>
+        <div className="title-stack main-menu-title" aria-label="SnackRush">
+          <span className="title-candy" aria-hidden="true">🍬</span>
+          <h1>SnackRush</h1>
+          <span className="title-candy" aria-hidden="true">🍭</span>
+        </div>
 
-      <div className="start-action-row">
-        <button
-          type="button"
-          className="secondary-button start-side-button menu-info-button"
-          onClick={() => setInfoOpen(true)}
-          aria-controls="snackrush-info-modal"
-        >
-          Info
-        </button>
+        <div className="start-action-row">
+          <button
+            type="button"
+            className="secondary-button start-side-button menu-info-button"
+            onClick={() => setInfoOpen(true)}
+            aria-controls="snackrush-info-modal"
+          >
+            Info
+          </button>
 
-        <button className="primary-button jumbo-button main-start-button" onClick={onStart}>
-          Start Rush!
-        </button>
+          <button className="primary-button jumbo-button main-start-button" onClick={onStart}>
+            Start Rush!
+          </button>
 
-        <button
-          type="button"
-          className="secondary-button start-side-button player-name-button"
-          onClick={() => setPlayerNameOpen(true)}
-          aria-controls="snackrush-player-modal"
-          aria-label={`Change Name: ${playerProfile.name}`}
-        >
-          Change Name
-        </button>
-      </div>
+          <button
+            type="button"
+            className="secondary-button start-side-button player-name-button"
+            onClick={() => setPlayerNameOpen(true)}
+            aria-controls="snackrush-player-modal"
+            aria-label={`Change Name: ${playerProfile.name}`}
+          >
+            Change Name
+          </button>
+        </div>
+
+        <div className="menu-layout main-menu-layout">
+          <ControlsPanel />
+          <Leaderboard
+            entries={leaderboard}
+            title="Local leaderboard"
+            subtitle={`Beat ${leaderboard[0]?.name || 'Tyche'} at ${leaderboard[0]?.score || 0}!`}
+          />
+        </div>
+      </section>
 
       <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} socialLinks={socialLinks} />
       <PlayerNameModal open={playerNameOpen} playerProfile={playerProfile} onChangePlayerProfile={onChangePlayerProfile} onClose={() => setPlayerNameOpen(false)} />
-
-      <div className="menu-layout main-menu-layout">
-        <ControlsPanel />
-        <Leaderboard
-          entries={leaderboard}
-          title="Local leaderboard"
-          subtitle={`Beat ${leaderboard[0]?.name || 'Tyche'} at ${leaderboard[0]?.score || 0}!`}
-        />
-      </div>
-    </section>
+    </>
   );
 }
 
