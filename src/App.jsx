@@ -12,12 +12,12 @@ const GAME_SECONDS = 45;
 const STARTING_LIVES = 3;
 const PLAYER_SPEED = 520;
 const GLOBAL_SKILL_COOLDOWN = 7;
-const DASH_DISTANCE = 170;
+const DASH_DURATION = 0.22;
+const DASH_SPEED_MULTIPLIER = 4.4;
 const DASH_IFRAME_SECONDS = 0.5;
 const SHIELD_DURATION = 3;
 const DOUBLE_POINTS_DURATION = 5;
-const DOUBLE_POINTS_SLOW_DURATION = 2;
-const DOUBLE_POINTS_SLOW_MULTIPLIER = 0.75;
+const DOUBLE_POINTS_SLOW_MULTIPLIER = 0.55;
 const RANDOM_SPECIAL_COOLDOWN = 15;
 const SKILL_PRESS_FEEDBACK_SECONDS = 0.45;
 const READY_COUNTDOWN_SECONDS = 3;
@@ -76,10 +76,10 @@ const freshItem = (id) => {
   };
 };
 
-const makeConfettiBurst = (x, y, startId) =>
-  Array.from({ length: 12 }, (_, index) => {
+const makeConfettiBurst = (x, y, startId, count = 16) =>
+  Array.from({ length: count }, (_, index) => {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI;
-    const distance = 36 + Math.random() * 58;
+    const distance = 42 + Math.random() * (count > 16 ? 88 : 68);
 
     return {
       id: startId + index,
@@ -90,6 +90,7 @@ const makeConfettiBurst = (x, y, startId) =>
       dy: Math.sin(angle) * distance - 18,
       spin: (Math.random() - 0.5) * 360,
       color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
+      sparkle: index % 4 === 0,
     };
   });
 
@@ -510,9 +511,9 @@ function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfil
 
 function ControlsPanel() {
   const skills = [
-    { id: 'dash', key: 'Z', name: 'Dash', tone: 'skill-ready', tooltip: 'Dash in your current move direction and gain 0.5 seconds of invincibility frames.' },
+    { id: 'dash', key: 'Z', name: 'Dash', tone: 'skill-ready', tooltip: 'Fast dodge roll in your current move direction with 0.5 seconds of invincibility frames.' },
     { id: 'shield', key: 'X', name: 'Shield', tone: 'skill-ready', tooltip: 'Block rotten hits for 3 seconds. Shares the 7-second global skill cooldown.' },
-    { id: 'double-points', key: 'C', name: 'Double Points', tone: 'skill-ready', tooltip: 'Double your score gains for 5 seconds, then suffer a brief lingering slow.' },
+    { id: 'double-points', key: 'C', name: 'Double Points', tone: 'skill-ready', tooltip: 'Double your score gains for 5 seconds, but move slower while it is active.' },
     { id: 'random-special', key: 'V', name: 'Random Special', tone: 'skill-ready', tooltip: 'Instantly trigger one random special effect with its own 15-second cooldown.' },
   ];
   const specialItems = [
@@ -614,10 +615,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     dodgeActive: false,
     dodgeRemaining: 0,
     globalSkillCooldown: 0,
+    dashActive: false,
+    dashRemaining: 0,
+    dashDirection: 0,
     dashIframeRemaining: 0,
     doublePointsActive: false,
     doublePointsRemaining: 0,
-    doublePointsSlowRemaining: 0,
+    doublePointsCueRemaining: 0,
     randomSpecialCooldown: 0,
     randomSpecialLabel: '',
   });
@@ -638,10 +642,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     dodgeActive: false,
     dodgeRemaining: 0,
     globalSkillCooldown: 0,
+    dashActive: false,
+    dashRemaining: 0,
+    dashDirection: 0,
     dashIframeRemaining: 0,
     doublePointsActive: false,
     doublePointsRemaining: 0,
-    doublePointsSlowRemaining: 0,
+    doublePointsCueRemaining: 0,
     randomSpecialCooldown: 0,
     randomSpecialLabel: '',
     failReason: '',
@@ -775,7 +782,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
         state.globalSkillCooldown = 0;
         return;
       }
-      state.basketX = clamp(state.basketX + direction * DASH_DISTANCE, 12, GAME_WIDTH - BASKET_WIDTH - 12);
+      state.dashActive = true;
+      state.dashRemaining = DASH_DURATION;
+      state.dashDirection = direction;
       state.dashIframeRemaining = DASH_IFRAME_SECONDS;
       state.flash = 'bonus';
     }
@@ -789,7 +798,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     if (skillId === 'doublePoints') {
       state.doublePointsActive = true;
       state.doublePointsRemaining = DOUBLE_POINTS_DURATION;
-      state.doublePointsSlowRemaining = 0;
+      state.doublePointsCueRemaining = 1.25;
       state.flash = 'bonus';
     }
 
@@ -905,6 +914,15 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       state.globalSkillCooldown = Math.max(0, state.globalSkillCooldown - delta);
       state.randomSpecialCooldown = Math.max(0, state.randomSpecialCooldown - delta);
       state.dashIframeRemaining = Math.max(0, state.dashIframeRemaining - delta);
+      state.doublePointsCueRemaining = Math.max(0, state.doublePointsCueRemaining - delta);
+
+      if (state.dashActive) {
+        state.dashRemaining = Math.max(0, state.dashRemaining - delta);
+        if (state.dashRemaining === 0) {
+          state.dashActive = false;
+          state.dashDirection = 0;
+        }
+      }
 
       if (state.dodgeActive) {
         state.dodgeRemaining = Math.max(0, state.dodgeRemaining - delta);
@@ -913,20 +931,16 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
 
       if (state.doublePointsActive) {
         state.doublePointsRemaining = Math.max(0, state.doublePointsRemaining - delta);
-        if (state.doublePointsRemaining === 0) {
-          state.doublePointsActive = false;
-          state.doublePointsSlowRemaining = DOUBLE_POINTS_SLOW_DURATION;
-        }
-      } else if (state.doublePointsSlowRemaining > 0) {
-        state.doublePointsSlowRemaining = Math.max(0, state.doublePointsSlowRemaining - delta);
+        if (state.doublePointsRemaining === 0) state.doublePointsActive = false;
       }
 
+      const movementDirection = state.dashActive ? state.dashDirection : direction;
       state.evading = state.dodgeActive || state.dashIframeRemaining > 0;
-      state.speeding = state.dashIframeRemaining > 0;
-      state.movementDirection = direction;
-      const currentSpeed = PLAYER_SPEED * (state.doublePointsSlowRemaining > 0 ? DOUBLE_POINTS_SLOW_MULTIPLIER : 1);
+      state.speeding = state.dashActive || state.dashIframeRemaining > 0;
+      state.movementDirection = movementDirection;
+      const currentSpeed = PLAYER_SPEED * (state.dashActive ? DASH_SPEED_MULTIPLIER : state.doublePointsActive ? DOUBLE_POINTS_SLOW_MULTIPLIER : 1);
       const previousBasketX = state.basketX;
-      state.basketX = clamp(state.basketX + direction * currentSpeed * delta, 12, GAME_WIDTH - BASKET_WIDTH - 12);
+      state.basketX = clamp(state.basketX + movementDirection * currentSpeed * delta, 12, GAME_WIDTH - BASKET_WIDTH - 12);
 
       state.spawnClock -= delta;
       const spawnDelay = Math.max(0.28, 0.78 - state.elapsed * 0.01);
@@ -980,7 +994,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
             state.score += earnedPoints;
             state.caught += 1;
             state.flash = updated.type === 'bonus' ? 'bonus' : 'sweet';
-            const burst = makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId);
+            const burst = makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId, state.doublePointsActive ? 24 : 16);
             state.nextConfettiId += burst.length;
             state.confetti.push(...burst);
           }
@@ -1023,10 +1037,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           dodgeActive: state.dodgeActive,
           dodgeRemaining: state.dodgeRemaining,
           globalSkillCooldown: state.globalSkillCooldown,
+          dashActive: state.dashActive,
+          dashRemaining: state.dashRemaining,
+          dashDirection: state.dashDirection,
           dashIframeRemaining: state.dashIframeRemaining,
           doublePointsActive: state.doublePointsActive,
           doublePointsRemaining: state.doublePointsRemaining,
-          doublePointsSlowRemaining: state.doublePointsSlowRemaining,
+          doublePointsCueRemaining: state.doublePointsCueRemaining,
           randomSpecialCooldown: state.randomSpecialCooldown,
           randomSpecialLabel: state.randomSpecialLabel,
         });
@@ -1044,7 +1061,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
   }, [finishGame]);
 
   return (
-    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${pauseOpen ? 'paused' : ''} ${gameOverHold ? 'gameover-hold' : ''}`} aria-label="SnackRush game area">
+    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${snapshot.doublePointsActive ? 'double-points' : ''} ${pauseOpen ? 'paused' : ''} ${gameOverHold ? 'gameover-hold' : ''}`} aria-label="SnackRush game area">
       <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} lives={snapshot.lives} combo={snapshot.combo} />
       <div className="game-board" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
         <div className="shop-awning" />
@@ -1061,7 +1078,6 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           dodgeRemaining={snapshot.dodgeRemaining}
           doublePointsActive={snapshot.doublePointsActive}
           doublePointsRemaining={snapshot.doublePointsRemaining}
-          doublePointsSlowRemaining={snapshot.doublePointsSlowRemaining}
           randomSpecialCooldown={snapshot.randomSpecialCooldown}
           randomSpecialLabel={snapshot.randomSpecialLabel}
           onSkillPress={handleSkillPress}
@@ -1069,6 +1085,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
         {snapshot.items.map((item) => <FallingSnack key={item.id} item={item} />)}
         <ConfettiBurst pieces={snapshot.confetti} />
         <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} />
+        {(snapshot.doublePointsCueRemaining > 0 || snapshot.doublePointsActive) && <DoublePointsCue active={snapshot.doublePointsActive} />}
         {debugMode && <DebugHitboxes items={snapshot.items} basketX={snapshot.basketX} />}
         {gameOverHold && <GameOverHoldOverlay hold={gameOverHold} onConfirm={() => confirmGameOver(gameOverHold)} />}
         {readyCountdown > 0 && !pauseOpen && !gameOverHold && <ReadyCountdownOverlay seconds={readyCountdown} />}
@@ -1163,7 +1180,7 @@ const SKILL_HOTKEYS = [
   { id: 'debug', keyName: 'H', label: 'Hitbox' },
 ];
 
-function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movementDirection, globalSkillCooldown, dashIframeRemaining, dodgeActive, dodgeRemaining, doublePointsActive, doublePointsRemaining, doublePointsSlowRemaining, randomSpecialCooldown, randomSpecialLabel, onSkillPress }) {
+function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movementDirection, globalSkillCooldown, dashIframeRemaining, dodgeActive, dodgeRemaining, doublePointsActive, doublePointsRemaining, randomSpecialCooldown, randomSpecialLabel, onSkillPress }) {
   const getSkillState = (skill) => {
     if (skill.id === 'debug') {
       const remaining = debugMode ? skillPressTimers.debug || SKILL_PRESS_FEEDBACK_SECONDS : skillPressTimers.debug || 0;
@@ -1199,13 +1216,13 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movem
     }
 
     if (skill.id === 'doublePoints') {
-      const remaining = doublePointsActive ? doublePointsRemaining : doublePointsSlowRemaining > 0 ? doublePointsSlowRemaining : globalSkillCooldown;
+      const remaining = doublePointsActive ? doublePointsRemaining : globalSkillCooldown;
       return {
         shown: remaining > 0,
         disabled: paused || locked || globalSkillCooldown > 0 || doublePointsActive,
         remaining,
-        total: doublePointsActive ? DOUBLE_POINTS_DURATION : doublePointsSlowRemaining > 0 ? DOUBLE_POINTS_SLOW_DURATION : GLOBAL_SKILL_COOLDOWN,
-        label: doublePointsSlowRemaining > 0 ? 'Slow' : skill.label,
+        total: doublePointsActive ? DOUBLE_POINTS_DURATION : GLOBAL_SKILL_COOLDOWN,
+        label: doublePointsActive ? '2x + Slow' : skill.label,
       };
     }
 
@@ -1324,11 +1341,20 @@ function FallingSnack({ item }) {
   );
 }
 
+function DoublePointsCue({ active }) {
+  return (
+    <div className={`double-points-cue ${active ? 'active' : ''}`} aria-hidden="true">
+      <span>2×</span>
+      <strong>DOUBLE POINTS</strong>
+    </div>
+  );
+}
+
 function ConfettiBurst({ pieces }) {
   return pieces.map((piece) => (
     <span
       key={piece.id}
-      className="confetti-piece"
+      className={`confetti-piece ${piece.sparkle ? 'sparkle' : ''}`}
       style={{
         left: piece.x,
         top: piece.y,

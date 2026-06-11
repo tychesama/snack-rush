@@ -94,8 +94,13 @@ assert(!app.includes('className="skills-title"'), 'skills hotkeys text label sho
 assert(css.includes('.skill-cooldown-wipe') && css.includes('conic-gradient(from -90deg'), 'skills cooldown should use a clock-wipe style radial mask');
 assert(app.includes("'--cooldown-sweep': sweep"), 'skill cooldown wipe should receive live sweep styling');
 assert(app.includes('GLOBAL_SKILL_COOLDOWN = 7') && app.includes('RANDOM_SPECIAL_COOLDOWN = 15'), 'skills should use the planned 7s global cooldown and 15s random special cooldown');
-assert(app.includes('DASH_DISTANCE') && app.includes('DASH_IFRAME_SECONDS = 0.5'), 'dash should be an actual movement skill with 0.5s iframes');
-assert(app.includes('DOUBLE_POINTS_DURATION = 5') && app.includes('DOUBLE_POINTS_SLOW_MULTIPLIER'), 'double points should be an actual 5s skill with lingering slow');
+assert(app.includes('DASH_DURATION') && app.includes('DASH_SPEED_MULTIPLIER') && app.includes('dashDirection'), 'dash should be a fast dodge roll over time, not an instant teleport');
+assert(!app.includes('state.basketX = clamp(state.basketX + direction * DASH_DISTANCE'), 'dash should not instantly move the basket by a fixed distance');
+assert(app.includes('DASH_IFRAME_SECONDS = 0.5'), 'dash should keep 0.5s invincibility frames');
+assert(app.includes('DOUBLE_POINTS_DURATION = 5') && app.includes('DOUBLE_POINTS_SLOW_MULTIPLIER = 0.55'), 'double points should apply a stronger slow during the 5s effect');
+assert(!app.includes('DOUBLE_POINTS_SLOW_DURATION') && !app.includes('doublePointsSlowRemaining'), 'double points should no longer apply a lingering slow after the effect');
+assert(app.includes('doublePointsCueRemaining') && app.includes('DoublePointsCue') && css.includes('.game-wrap.double-points') && css.includes('.double-points-cue'), 'double points should show a clear visual cue while active');
+assert(app.includes('makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId, state.doublePointsActive ? 24 : 16)') && css.includes('.confetti-piece.sparkle'), 'candy catches should create bigger confetti/effects, especially during double points');
 assert(app.includes('disabled={state.disabled}') && app.includes('globalSkillCooldown') && app.includes('randomSpecialCooldown'), 'skill buttons should disable during pause, global cooldown, and random-special cooldown states');
 assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'dash'") && app.includes("id: 'doublePoints'") && app.includes("id: 'randomSpecial'"), 'skills hotkeys should expose dash, shield, double points, and random special');
 assert(!app.includes("id: 'frenzy'") && !app.includes("id: 'magnet'") && !app.includes("id: 'boost'"), 'old boost/magnet/frenzy placeholder skills should be removed');
