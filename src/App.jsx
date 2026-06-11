@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { COMBO_TIMEOUT_SECONDS, calculateCatchPoints, formatComboMultiplier } from './game/scoring.js';
 
 const GAME_WIDTH = 980;
 const GAME_HEIGHT = 560;
@@ -345,7 +346,7 @@ function InfoModal({ open, onClose, socialLinks }) {
             <div className="main-rule-icons" aria-label="Good snacks to catch">
               {goodItems.map((item) => <span key={item} className="main-rule-token">{item}</span>)}
             </div>
-            <small>Good snacks add score and keep your combo alive.</small>
+            <small>Good snacks add score, show a Combo Pop multiplier, and reset the 3.5s combo timer.</small>
           </section>
 
           <section className="info-mechanic-card danger">
@@ -607,6 +608,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     timeLeft: GAME_SECONDS,
     caught: 0,
     combo: 0,
+    comboIdleRemaining: 0,
+    comboBreakRemaining: 0,
+    comboBreakLabel: '',
     flash: '',
     evading: false,
     speeding: false,
@@ -634,6 +638,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     timeLeft: GAME_SECONDS,
     caught: 0,
     combo: 0,
+    comboIdleRemaining: 0,
+    comboBreakRemaining: 0,
+    comboBreakLabel: '',
     flash: '',
     evading: false,
     speeding: false,
@@ -929,6 +936,21 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
         .map((piece) => ({ ...piece, age: piece.age + delta }))
         .filter((piece) => piece.age < 0.75);
 
+      if (state.comboBreakRemaining > 0) {
+        state.comboBreakRemaining = Math.max(0, state.comboBreakRemaining - delta);
+        if (state.comboBreakRemaining === 0) state.comboBreakLabel = '';
+      }
+
+      if (state.combo > 0) {
+        state.comboIdleRemaining = Math.max(0, state.comboIdleRemaining - delta);
+        if (state.comboIdleRemaining === 0) {
+          state.combo = 0;
+          state.comboBreakRemaining = 1.1;
+          state.comboBreakLabel = 'Combo timed out!';
+          state.flash = 'combo-broke';
+        }
+      }
+
       if (Object.keys(skillPressTimersRef.current).length > 0) {
         const nextSkillPressTimers = Object.fromEntries(
           Object.entries(skillPressTimersRef.current)
@@ -959,14 +981,23 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
             }
 
             state.lives -= 1;
+            state.comboBreakRemaining = 1.1;
+            state.comboBreakLabel = 'Combo broke!';
             state.combo = 0;
-            state.flash = 'yuck';
+            state.comboIdleRemaining = 0;
+            state.flash = 'combo-broke';
             state.failReason = 'Rotten snacks ruined the rush!';
           } else {
             state.combo += 1;
+            state.comboIdleRemaining = COMBO_TIMEOUT_SECONDS;
+            state.comboBreakRemaining = 0;
+            state.comboBreakLabel = '';
             const basePoints = updated.type === 'bonus' ? 25 : 10;
-            const comboBonus = Math.min(20, Math.floor(state.combo / 4) * 5);
-            const earnedPoints = (basePoints + comboBonus) * (state.doublePointsActive ? 2 : 1);
+            const earnedPoints = calculateCatchPoints({
+              baseValue: basePoints,
+              combo: state.combo,
+              doublePointsActive: state.doublePointsActive,
+            });
             state.score += earnedPoints;
             state.caught += 1;
             state.flash = updated.type === 'bonus' ? 'bonus' : 'sweet';
@@ -1000,6 +1031,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           timeLeft: 0,
           caught: state.caught,
           combo: state.combo,
+          comboIdleRemaining: state.comboIdleRemaining,
+          comboBreakRemaining: state.comboBreakRemaining,
+          comboBreakLabel: state.comboBreakLabel,
           flash: state.flash,
           evading: state.evading,
           speeding: state.speeding,
@@ -1021,6 +1055,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           timeLeft: state.timeLeft,
           caught: state.caught,
           combo: state.combo,
+          comboIdleRemaining: state.comboIdleRemaining,
+          comboBreakRemaining: state.comboBreakRemaining,
+          comboBreakLabel: state.comboBreakLabel,
           flash: state.flash,
           evading: state.evading,
           speeding: state.speeding,
@@ -1053,8 +1090,8 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
   }, [finishGame]);
 
   return (
-    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${snapshot.doublePointsActive ? 'double-points' : ''} ${pauseOpen ? 'paused' : ''} ${gameOverHold ? 'gameover-hold' : ''}`} aria-label="SnackRush game area">
-      <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} lives={snapshot.lives} combo={snapshot.combo} />
+    <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${snapshot.doublePointsActive ? 'double-points' : ''} ${snapshot.comboBreakRemaining > 0 ? 'combo-broke' : ''} ${pauseOpen ? 'paused' : ''} ${gameOverHold ? 'gameover-hold' : ''}`} aria-label="SnackRush game area">
+      <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} lives={snapshot.lives} combo={snapshot.combo} comboBreakRemaining={snapshot.comboBreakRemaining} />
       <div className="game-board" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
         <div className="shop-awning" />
         <div className="conveyor-label">SNACK STORM</div>
@@ -1078,6 +1115,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
         <ConfettiBurst pieces={snapshot.confetti} />
         <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} doublePoints={snapshot.doublePointsActive} />
         {snapshot.randomSpecialCueRemaining > 0 && <RandomSpecialCue label={snapshot.randomSpecialLabel} />}
+        {snapshot.comboBreakRemaining > 0 && <ComboBreakCue label={snapshot.comboBreakLabel} />}
         {debugMode && <DebugHitboxes items={snapshot.items} basketX={snapshot.basketX} />}
         {gameOverHold && <GameOverHoldOverlay hold={gameOverHold} onConfirm={() => confirmGameOver(gameOverHold)} />}
         {readyCountdown > 0 && !pauseOpen && !gameOverHold && <ReadyCountdownOverlay seconds={readyCountdown} />}
@@ -1123,9 +1161,10 @@ function ReadyCountdownOverlay({ seconds }) {
   );
 }
 
-function Hud({ score, timeLeft, lives, combo }) {
+function Hud({ score, timeLeft, lives, combo, comboBreakRemaining }) {
   const shownTime = Math.ceil(timeLeft);
   const timerMood = shownTime <= 5 ? 'timer-critical' : shownTime <= 10 ? 'timer-warning' : '';
+  const comboValue = combo > 0 ? formatComboMultiplier(combo) : '—';
 
   return (
     <div className="hud hud-redesign">
@@ -1137,7 +1176,7 @@ function Hud({ score, timeLeft, lives, combo }) {
           <HeartsDisplay lives={lives} />
         </div>
       </div>
-      <Stat label="Combo Pop" value={combo > 1 ? `x${combo}` : '—'} className="combo-card compact-stat" />
+      <Stat label="Combo Pop" value={comboValue} className={`combo-card compact-stat ${comboBreakRemaining > 0 ? 'combo-broke' : ''}`} pulseKey={`${combo}-${comboBreakRemaining > 0 ? 'broke' : 'live'}`} />
     </div>
   );
 }
@@ -1329,6 +1368,15 @@ function FallingSnack({ item }) {
       aria-hidden="true"
     >
       {item.emoji}
+    </div>
+  );
+}
+
+function ComboBreakCue({ label }) {
+  return (
+    <div className="combo-break-cue" aria-hidden="true">
+      <span>💥</span>
+      <strong>{label || 'Combo broke!'}</strong>
     </div>
   );
 }

@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node tests/source-contract.test.mjs"
+    "test": "node tests/scoring.test.mjs && node tests/source-contract.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

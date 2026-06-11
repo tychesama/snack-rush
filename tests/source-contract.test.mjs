@@ -13,7 +13,7 @@ function assert(condition, message) {
 }
 
 assert(!existsSync(join(root, 'reference basket.png')), 'reference basket.png should be deleted');
-assert(pkg.scripts.test === 'node tests/source-contract.test.mjs', 'package.json should expose the source contract test');
+assert(pkg.scripts.test === 'node tests/scoring.test.mjs && node tests/source-contract.test.mjs', 'package.json should expose scoring and source contract tests');
 
 assert(app.includes('const DEBUG_HITBOXES_DEFAULT = false;'), 'debug hitboxes should default to off');
 assert(app.includes('const [debugMode, setDebugMode] = useState(DEBUG_HITBOXES_DEFAULT);'), 'game state should track hitbox debug mode');
@@ -105,6 +105,11 @@ const randomSpecialSource = app.slice(app.indexOf('const applyRandomSpecial'), a
 assert(app.includes('randomSpecialCueRemaining') && app.includes('RandomSpecialCue') && css.includes('.random-special-cue'), 'random special should show a visual cue for now');
 assert(!randomSpecialSource.includes('state.score +=') && !randomSpecialSource.includes('state.lives =') && !randomSpecialSource.includes('state.items = []') && !randomSpecialSource.includes('state.dodgeActive = true'), 'random special should not change gameplay yet');
 assert(app.includes('makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId, state.doublePointsActive ? 24 : 16)') && css.includes('.confetti-piece.sparkle'), 'candy catches should create bigger confetti/effects, especially during double points');
+assert(app.includes("import { COMBO_TIMEOUT_SECONDS, calculateCatchPoints, formatComboMultiplier } from './game/scoring.js';"), 'game should use shared scoring helpers');
+assert(!app.includes('comboBonus') && app.includes('calculateCatchPoints({') && app.includes('comboIdleRemaining'), 'combo scoring should use percentage helper and track idle timeout');
+assert(app.includes('ComboBreakCue') && app.includes('comboBreakRemaining') && css.includes('.combo-break-cue') && css.includes('comboCardBreak'), 'combo failures should show visual feedback and clear automatically');
+assert(app.includes("formatComboMultiplier(combo)") && !app.includes("combo > 1 ? `x${combo}`"), 'Combo Pop should display multiplier instead of only combo count');
+assert(app.includes("comboBreakLabel = 'Combo timed out!'") && app.includes("comboBreakLabel = 'Combo broke!'"), 'combo timeout and bad catches should both break combo visibly');
 assert(app.includes('disabled={state.disabled}') && app.includes('globalSkillCooldown') && app.includes('randomSpecialCooldown'), 'skill buttons should disable during pause, global cooldown, and random-special cooldown states');
 assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'dash'") && app.includes("id: 'doublePoints'") && app.includes("id: 'randomSpecial'"), 'skills hotkeys should expose dash, shield, double points, and random special');
 assert(!app.includes("id: 'frenzy'") && !app.includes("id: 'magnet'") && !app.includes("id: 'boost'"), 'old boost/magnet/frenzy placeholder skills should be removed');
