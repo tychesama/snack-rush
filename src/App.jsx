@@ -990,6 +990,22 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
         return;
       }
       if (state.timeLeft <= 0) {
+        state.timeLeft = 0;
+        setSnapshot((current) => ({
+          ...current,
+          basketX: state.basketX,
+          items: state.items,
+          score: state.score,
+          lives: state.lives,
+          timeLeft: 0,
+          caught: state.caught,
+          combo: state.combo,
+          flash: state.flash,
+          evading: state.evading,
+          speeding: state.speeding,
+          movementDirection: state.movementDirection,
+          confetti: state.confetti,
+        }));
         finishGame('Time is up!');
         return;
       }

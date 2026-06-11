@@ -693,6 +693,18 @@ h1 {
   -ms-overflow-style: none;
 }
 
+.leaderboard-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.main-menu-layout .leaderboard-card {
+  min-height: 0;
+  height: 100%;
+  max-height: 430px;
+}
+
 .leaderboard-list li {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -818,16 +830,19 @@ h1 {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(220px, 0.82fr) minmax(280px, 0.95fr) minmax(220px, 0.82fr);
+  grid-template-columns: minmax(150px, 188px) max-content minmax(150px, 188px);
   align-items: start;
   justify-content: center;
-  gap: 8px;
+  column-gap: 20px;
+  row-gap: 8px;
   width: min(980px, 94vw);
   margin: -10px auto 8px;
 }
 
 .timer-heart-stack {
   display: grid;
+  justify-self: center;
+  width: max-content;
   gap: 4px;
   transform: translateY(-10px);
 }
@@ -838,26 +853,26 @@ h1 {
   display: grid;
   justify-items: center;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .heart-row {
   display: flex;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
 }
 
 .heart-row b {
-  display: inline-grid;
-  place-items: center;
-  width: 34px;
-  height: 28px;
-  border: 3px solid #2b1239;
-  border-radius: 12px;
-  background: #fff8c7;
-  box-shadow: 0 4px 0 #2b1239;
-  font-size: 1.35rem;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 1.62rem;
   line-height: 1;
+  filter: drop-shadow(2px 2px 0 #2b1239) drop-shadow(0 2px 5px rgba(255, 47, 145, 0.4));
 }
 
 .heart-row .heart-full {
@@ -941,11 +956,13 @@ h1 {
 }
 
 .stat-card.hero-timer {
-  min-height: 136px;
+  width: max-content;
+  min-width: 178px;
+  min-height: 126px;
   align-content: start;
   justify-items: center;
-  gap: 4px;
-  padding-top: 12px;
+  gap: 2px;
+  padding: 12px 20px 14px;
   border-radius: 30px;
   transform: rotate(0deg) scale(1.05);
   background:
@@ -961,16 +978,27 @@ h1 {
 }
 
 .stat-card.hero-timer .hearts-display {
-  margin-top: 2px;
+  margin-top: -2px;
 }
 
 .stat-card.hero-timer .heart-row b {
-  background: rgba(255, 248, 199, 0.96);
+  background: transparent;
 }
 
 .compact-stat {
-  min-height: 78px;
-  margin-top: 30px;
+  width: min(188px, 100%);
+  min-height: 92px;
+  margin-top: 24px;
+  padding-inline: 10px;
+}
+
+.score-card {
+  justify-self: end;
+  text-align: right;
+}
+
+.combo-card {
+  justify-self: start;
 }
 
 .stat-card.timer-warning {
@@ -2100,7 +2128,7 @@ h1 {
   text-transform: uppercase;
 }
 
-/* Revert leaderboard polish; keep top crown visible */
+/* Top leaderboard ranks: medal-like rows, crown kept inside bounds */
 .leaderboard-list li,
 .leaderboard-list li.rank-1,
 .leaderboard-list li.rank-2,
@@ -2117,12 +2145,63 @@ h1 {
   z-index: 1;
 }
 
+.leaderboard-list li.rank-1,
+.leaderboard-list li.rank-2,
+.leaderboard-list li.rank-3 {
+  border-width: 4px;
+}
+
 .leaderboard-list li.rank-1 {
   padding-left: 38px;
+  background:
+    radial-gradient(circle at 13% 18%, rgba(255, 255, 255, 0.72) 0 16px, transparent 17px),
+    linear-gradient(90deg, #fff46b 0%, #ffe08a 52%, #ffd9ff 100%);
+  border-color: #ffb000;
+  box-shadow:
+    0 6px 0 #2b1239,
+    0 0 0 4px rgba(255, 176, 0, 0.35),
+    0 0 22px rgba(255, 196, 0, 0.35);
+  z-index: 3;
+}
+
+.leaderboard-list li.rank-2 {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.7) 0 16px, transparent 17px),
+    linear-gradient(90deg, #f7f7fb 0%, #dddfea 55%, #f1dfff 100%);
+  border-color: #9ea7b8;
+  box-shadow: 0 5px 0 #2b1239, 0 0 0 3px rgba(185, 192, 204, 0.35);
+  z-index: 2;
+}
+
+.leaderboard-list li.rank-3 {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.68) 0 16px, transparent 17px),
+    linear-gradient(90deg, #f4dfc6 0%, #d8b18b 55%, #f1d7d0 100%);
+  border-color: #9c6644;
+  box-shadow: 0 5px 0 #2b1239, 0 0 0 3px rgba(156, 102, 68, 0.28);
+}
+
+.leaderboard-list li.rank-1 .leaderboard-rank,
+.leaderboard-list li.rank-1 .leaderboard-score span {
+  color: #d88a00;
+}
+
+.leaderboard-list li.rank-2 .leaderboard-rank,
+.leaderboard-list li.rank-2 .leaderboard-score span {
+  color: #7e8798;
+}
+
+.leaderboard-list li.rank-3 .leaderboard-rank,
+.leaderboard-list li.rank-3 .leaderboard-score span {
+  color: #8b5a3c;
+}
+
+.leaderboard-list li.rank-1 .leaderboard-name span {
+  font-size: 1.08rem;
 }
 
 .leaderboard-list li.rank-1 .leaderboard-score {
-  font-size: 1.25rem;
+  font-size: 1.32rem;
 }
 
 .leaderboard-top-crown {
@@ -2896,6 +2975,7 @@ h1 {
 .main-menu-layout {
   width: 100%;
   grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+  align-items: stretch;
   gap: 18px;
   margin: 8px 0 0;
 }

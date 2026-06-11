@@ -77,7 +77,7 @@ assert(css.includes('.control-key:hover'), 'designed key controls should be hove
 assert(app.includes('Control Panel') && !app.includes('How to play'), 'main menu controls should keep the compact heading without the old badge');
 assert(css.includes('.menu-modal-overlay') && css.includes('.info-modal-card') && css.includes('.modal-social-logo-row'), 'combined info modal styles should exist');
 assert(css.includes('.info-modal-card') && css.includes('overflow: hidden') && css.includes('.socials-content-grid'), 'info modal should hide scrollbars and use the socials panel space');
-assert(!app.includes('leaderboard-medal') && css.includes('leaderboard-top-crown') && css.includes('Revert leaderboard polish; keep top crown visible'), 'leaderboard should stay simple while keeping the top crown visible inside bounds');
+assert(!app.includes('leaderboard-medal') && css.includes('leaderboard-top-crown') && css.includes('Top leaderboard ranks: medal-like rows, crown kept inside bounds'), 'leaderboard should keep the crown inside bounds while restoring top-three visual effects');
 assert(app.includes('main-controls-top-grid') && css.includes('.main-controls-top-grid'), 'control panel should use a compact top grid layout');
 assert(!app.includes('main-section-kicker') && app.includes('main-rule-label') && !app.includes('main-rule-kicker'), 'control panel should use plain text labels instead of circular badge labels');
 assert(app.includes('Move Basket') && app.includes('Skills') && app.includes('Catch') && app.includes('Avoid') && app.includes('Specials'), 'menu and info modal should show plain text section labels');
@@ -115,6 +115,10 @@ assert(css.includes('/* Skills: no outer panel */') && css.includes('border-radi
 assert(css.includes('.debug-hitbox::after'), 'debug hitboxes should display labels');
 assert(app.includes('function HeartsDisplay'), 'hearts should be shown below the timer');
 assert(app.includes('className={`stat-card timer-card hero-timer ${timerMood}`}') && css.includes('.stat-card.hero-timer .hearts-display'), 'hearts should be centered inside the rush clock panel below the timer');
+assert(css.includes('grid-template-columns: minmax(150px, 188px) max-content minmax(150px, 188px)') && css.includes('width: max-content;') && css.includes('.score-card'), 'HUD should hug the Rush Clock contents, narrow side cards, and align Sugar Score right');
+assert(css.includes('.heart-row b') && css.includes('background: transparent;') && css.includes('box-shadow: none;') && css.includes('font-size: 1.62rem'), 'hearts should render as enlarged standalone hearts without containers');
+assert(app.includes('timeLeft: 0,') && app.includes("finishGame('Time is up!')"), 'timer finish path should snapshot 0s before showing game-over hold');
+assert(css.includes('/* Top leaderboard ranks: medal-like rows, crown kept inside bounds */') && css.includes('.leaderboard-list li.rank-2') && css.includes('linear-gradient(90deg, #f7f7fb') && css.includes('.main-menu-layout .leaderboard-card'), 'leaderboard should preserve top-three effects and main-menu scroll sizing');
 assert(css.includes('.timer-heart-stack') && css.includes('.hero-timer'), 'timer should be the top-most central HUD element');
 assert(app.includes('const BASKET_BOTTOM_OFFSET = 8;'), 'basket should be moved down slightly');
 assert(app.includes('const BASKET_HEIGHT = 54;'), 'basket should be flatter than the old design');
