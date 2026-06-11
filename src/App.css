@@ -615,6 +615,7 @@ h1 {
   position: relative;
   overflow: hidden;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
   gap: 12px;
   min-height: 100%;
@@ -640,7 +641,7 @@ h1 {
 
 .leaderboard-header {
   position: relative;
-  z-index: 1;
+  z-index: 10;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -678,11 +679,18 @@ h1 {
 .leaderboard-list {
   position: relative;
   z-index: 1;
+  min-height: 0;
+  max-height: 100%;
   display: grid;
+  align-content: start;
   gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 10px 8px 18px;
+  overflow-y: auto;
+  overflow-x: hidden;
   list-style: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .leaderboard-list li {
@@ -716,48 +724,6 @@ h1 {
 .leaderboard-list li.new-score {
   outline: 4px solid #69ff9f;
   animation: newScoreGlow 720ms ease-in-out infinite alternate;
-}
-
-/* Leaderboard: 50 entries, hidden scrollbar */
-
-.leaderboard-card {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-}
-
-.leaderboard-header {
-  position: relative;
-  z-index: 10;
-}
-
-/* only the list scrolls, header stays on top */
-.leaderboard-list {
-  min-height: 0;
-  max-height: 100%;
-  overflow-y: auto;
-  overflow-x: visible;
-  align-content: start;
-  padding: 4px 4px 12px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-
-}
-
-.leaderboard-list::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-/* main menu leaderboard height */
-.main-menu-layout .leaderboard-card {
-  max-height: 430px;
-}
-
-/* score screen / modal leaderboard height */
-.leaderboard-modal-card .leaderboard-card {
-  max-height: min(560px, 76vh);
 }
 
 .leaderboard-rank {
@@ -904,17 +870,13 @@ h1 {
 }
 
 .stat-card {
+  position: relative;
+  overflow: hidden;
   min-height: 76px;
   display: grid;
   align-content: center;
   padding: 10px 12px;
   color: #2b1239;
-  background: linear-gradient(180deg, #ffffff, #fff2a6);
-}
-
-.stat-card {
-  position: relative;
-  overflow: hidden;
   transform: rotate(-1deg);
   border-width: 5px;
   border-radius: 24px;
@@ -1086,6 +1048,7 @@ h1 {
   pointer-events: none;
 }
 
+/* Skills: no outer panel */
 .skills-hotkeys-panel {
   position: absolute;
   z-index: 12;
@@ -1093,12 +1056,12 @@ h1 {
   right: 20px;
   display: inline-flex;
   align-items: center;
-  padding: 5px;
-  border: 4px solid #2b1239;
-  border-radius: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   color: #2b1239;
-  background: linear-gradient(180deg, #fff8c7, #ffe8a3);
-  box-shadow: 0 5px 0 #2b1239, 0 0 14px rgba(255, 244, 107, 0.38);
+  background: transparent;
+  box-shadow: none;
   font-weight: 950;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1107,34 +1070,34 @@ h1 {
 .skills-hotkeys-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
 }
 
 .skill-hotkey {
   --cooldown-sweep: 0deg;
   position: relative;
   overflow: hidden;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   gap: 0;
-  padding: 3px;
+  padding: 4px;
   border: 3px solid #2b1239;
-  border-radius: 50%;
+  border-radius: 14px;
   color: #2b1239;
   background:
     radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.92) 0 5px, transparent 6px),
     linear-gradient(180deg, #31d6ff, #7aebff);
-  box-shadow: 0 3px 0 #2b1239;
+  box-shadow: 0 4px 0 #2b1239, 0 0 12px rgba(255, 255, 255, 0.3);
   font-weight: 950;
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, opacity 120ms ease;
 }
 
 .skill-cooldown-wipe {
   position: absolute;
-  inset: 3px;
-  border-radius: 50%;
+  inset: 4px;
+  border-radius: 10px;
   background:
     conic-gradient(from -90deg, rgba(27, 10, 37, 0.88) 0deg var(--cooldown-sweep), transparent var(--cooldown-sweep) 360deg),
     radial-gradient(circle at center, rgba(43, 18, 57, 0.18) 0 54%, transparent 55%);
@@ -1159,10 +1122,7 @@ h1 {
   animation: skillCountdownPulse 540ms ease-in-out infinite alternate;
 }
 
-.skill-hotkey.active .skill-cooldown-wipe {
-  opacity: 1;
-}
-
+.skill-hotkey.active .skill-cooldown-wipe,
 .skill-hotkey:disabled .skill-cooldown-wipe {
   opacity: 1;
 }
@@ -1180,21 +1140,21 @@ h1 {
 
 .skill-hotkey kbd {
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
 }
 
 .skill-hotkey small {
   position: absolute;
   left: 50%;
-  bottom: 4px;
+  bottom: 5px;
   transform: translateX(-50%);
-  min-width: 25px;
+  min-width: 29px;
   padding: 1px 3px;
   border-radius: 999px;
   color: #fff;
   background: #2b1239;
-  font-size: 0.46rem;
+  font-size: 0.48rem;
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -1317,14 +1277,11 @@ h1 {
 }
 
 .ready-countdown-card span {
+  color: #7a2ee8;
+  font-size: 0.9rem;
   font-weight: 950;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-}
-
-.ready-countdown-card span {
-  color: #7a2ee8;
-  font-size: 0.9rem;
 }
 
 .ready-countdown-card strong {
@@ -2104,6 +2061,7 @@ h1 {
 
 .leaderboard-modal-card .leaderboard-card {
   min-height: auto;
+  max-height: min(560px, 76vh);
 }
 
 .leaderboard-modal-close {
@@ -2142,106 +2100,42 @@ h1 {
   text-transform: uppercase;
 }
 
-.leaderboard-list li {
-  position: relative;
-  overflow: visible;
-}
-
-/* TOP 3 base treatment */
+/* Revert leaderboard polish; keep top crown visible */
+.leaderboard-list li,
 .leaderboard-list li.rank-1,
 .leaderboard-list li.rank-2,
 .leaderboard-list li.rank-3 {
-  border-width: 4px;
-}
-
-/* 1st place */
-.leaderboard-list li.rank-1 {
-  min-height: 72px;
-  padding: 13px 12px;
-  transform: none;
-  transform-origin: center;
-  background:
-    radial-gradient(circle at 14% 18%, rgba(255,255,255,0.72) 0 16px, transparent 17px),
-    linear-gradient(90deg, #fff46b 0%, #ffe08a 52%, #ffd9ff 100%);
-  border-color: #ffb000;
-  box-shadow:
-    0 6px 0 #2b1239,
-    0 0 0 4px rgba(255, 176, 0, 0.35),
-    0 0 22px rgba(255, 196, 0, 0.35);
-  z-index: 3;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-rank,
-.leaderboard-list li.rank-1 .leaderboard-score span {
-  color: #d88a00;
-}
-
-/* 2nd place */
-.leaderboard-list li.rank-2 {
-  background:
-    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.7) 0 16px, transparent 17px),
-    linear-gradient(90deg, #f7f7fb 0%, #dddfea 55%, #f1dfff 100%);
-  border-color: #9ea7b8;
-  box-shadow:
-    0 5px 0 #2b1239,
-    0 0 0 3px rgba(185, 192, 204, 0.35);
-  z-index: 2;
-}
-
-.leaderboard-list li.rank-2 .leaderboard-rank,
-.leaderboard-list li.rank-2 .leaderboard-score span {
-  color: #7e8798;
-}
-
-/* 3rd place */
-.leaderboard-list li.rank-3 {
-  background:
-    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.68) 0 16px, transparent 17px),
-    linear-gradient(90deg, #f4dfc6 0%, #d8b18b 55%, #f1d7d0 100%);
-  border-color: #9c6644;
-  box-shadow:
-    0 5px 0 #2b1239,
-    0 0 0 3px rgba(156, 102, 68, 0.28);
+  position: relative;
+  overflow: visible;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: auto;
+  padding: 9px 10px;
+  border: 3px solid #2b1239;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 5px 0 #2b1239;
   z-index: 1;
 }
 
-.leaderboard-list li.rank-3 .leaderboard-rank,
-.leaderboard-list li.rank-3 .leaderboard-score span {
-  color: #8b5a3c;
-}
-
-/* hover keeps special colors */
-.leaderboard-list li.rank-1:hover {
-  transform: translateY(-5px) rotate(-1deg);
-}
-
-.leaderboard-list li.rank-2:hover,
-.leaderboard-list li.rank-3:hover {
-  transform: translateY(-5px) rotate(var(--rank-tilt, -1deg));
-}
-
-/* crown on first place */
-.leaderboard-top-crown {
-  position: absolute;
-  top: -22px;
-  left: -17px;
-  z-index: 5;
-  font-size: 1.75rem;
-  line-height: 1;
-  transform: rotate(-25deg);
-  filter: drop-shadow(2px 3px 0 #2b1239) drop-shadow(0 0 8px rgba(255, 196, 0, 0.5));
-  pointer-events: none;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-name span {
-  font-size: 1.08rem;
+.leaderboard-list li.rank-1 {
+  padding-left: 38px;
 }
 
 .leaderboard-list li.rank-1 .leaderboard-score {
-  font-size: 1.38rem;
+  font-size: 1.25rem;
 }
 
-
+.leaderboard-top-crown {
+  position: absolute;
+  top: 9px;
+  left: 8px;
+  z-index: 5;
+  font-size: 1.35rem;
+  line-height: 1;
+  transform: rotate(-14deg);
+  filter: drop-shadow(2px 2px 0 #2b1239) drop-shadow(0 0 8px rgba(255, 196, 0, 0.62));
+  pointer-events: none;
+}
 
 .modal-confetti-layer {
   position: absolute;
@@ -2854,7 +2748,6 @@ h1 {
   }
 }
 
-
 /* Main menu rearrangement */
 
 .start-panel {
@@ -2992,8 +2885,8 @@ h1 {
 }
 
 .main-start-button {
-  min-width: min(100%, 320px);
-  margin: 0 auto 4px;
+  min-width: min(100%, 300px);
+  margin: 0 auto;
 }
 
 .main-menu-tagline {
@@ -3443,41 +3336,6 @@ h1 {
   outline-offset: 4px;
 }
 
-/* Leaderboard: 50 entries, hidden scrollbar, fixed #1 layout */
-
-.leaderboard-card {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-}
-
-.leaderboard-header {
-  position: relative;
-  z-index: 10;
-}
-
-.leaderboard-list {
-  min-height: 0;
-  max-height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  align-content: start;
-  padding: 10px 8px 18px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.leaderboard-list::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-/* main menu leaderboard height */
-.main-menu-layout .leaderboard-card {
-  max-height: 430px;
-}
-
 @media (max-width: 900px) {
   .start-panel-utility-bar {
     position: static;
@@ -3522,10 +3380,6 @@ h1 {
   }
 }
 
-/* score screen / modal leaderboard height */
-.leaderboard-modal-card .leaderboard-card {
-  max-height: min(560px, 76vh);
-}
 /* Start menu modal refinement */
 .start-action-row {
   width: min(100%, 760px);
@@ -3548,11 +3402,6 @@ h1 {
 .player-name-button {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.main-start-button {
-  min-width: min(100%, 300px);
-  margin: 0 auto;
 }
 
 .specials-only-rules {
@@ -3672,12 +3521,20 @@ h1 {
 }
 
 .modal-social-logo-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  align-content: stretch;
   justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
   margin: 0;
 }
 
 .info-modal-card {
-  width: min(760px, 100%);
+  width: min(900px, 100%);
+  max-height: min(92vh, 820px);
+  overflow: hidden;
+  gap: 12px;
 }
 
 .player-name-modal-card {
@@ -3703,16 +3560,7 @@ h1 {
   }
 }
 
-/* Player modal autosave, socials, and leaderboard top-three polish */
-
-/* Latest menu/socials and leaderboard polish */
-.info-modal-card {
-  width: min(900px, 100%);
-  max-height: min(92vh, 820px);
-  overflow: hidden;
-  gap: 12px;
-}
-
+/* Player modal autosave and socials polish */
 .info-modal-card .info-mechanics-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -3736,15 +3584,6 @@ h1 {
   grid-template-columns: minmax(230px, 0.9fr) minmax(260px, 1.1fr);
   align-items: stretch;
   gap: 12px;
-}
-
-.modal-social-logo-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
-  align-content: stretch;
-  gap: 10px;
-  width: 100%;
-  margin: 0;
 }
 
 .modal-social-logo-row .social-logo {
@@ -3811,83 +3650,6 @@ h1 {
   grid-template-columns: 1fr;
 }
 
-.leaderboard-list li {
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-}
-
-.leaderboard-list li.rank-1,
-.leaderboard-list li.rank-2,
-.leaderboard-list li.rank-3 {
-  min-height: 66px;
-  overflow: visible;
-}
-
-.leaderboard-list li.rank-1 {
-  padding: 13px 12px 13px 42px;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.78) 0 18px, transparent 19px),
-    radial-gradient(circle at 96% 18%, rgba(255, 255, 255, 0.55) 0 22px, transparent 23px),
-    linear-gradient(90deg, #fff46b 0%, #ffcf4a 46%, #ffd9ff 100%);
-  border-color: #ff9f00;
-  box-shadow: 0 7px 0 #2b1239, 0 0 0 4px rgba(255, 176, 0, 0.42), 0 0 24px rgba(255, 196, 0, 0.45);
-}
-
-.leaderboard-list li.rank-2 {
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.78) 0 17px, transparent 18px),
-    linear-gradient(90deg, #ffffff 0%, #d8deee 52%, #e8dfff 100%);
-  border-color: #9fa8ba;
-  box-shadow: 0 6px 0 #2b1239, 0 0 0 3px rgba(190, 198, 212, 0.46);
-}
-
-.leaderboard-list li.rank-3 {
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.76) 0 17px, transparent 18px),
-    linear-gradient(90deg, #ffe4c7 0%, #d49a66 52%, #ffd7d2 100%);
-  border-color: #9c6644;
-  box-shadow: 0 6px 0 #2b1239, 0 0 0 3px rgba(156, 102, 68, 0.36);
-}
-
-.leaderboard-top-crown {
-  top: 7px;
-  left: 8px;
-  font-size: 1.45rem;
-  transform: rotate(-14deg);
-  filter: drop-shadow(2px 2px 0 #2b1239) drop-shadow(0 0 8px rgba(255, 196, 0, 0.62));
-}
-
-.leaderboard-medal {
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 3px solid #2b1239;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 3px 0 #2b1239;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-medal {
-  background: #fff8c7;
-}
-
-.leaderboard-list li.rank-2 .leaderboard-medal {
-  background: #f4f6ff;
-}
-
-.leaderboard-list li.rank-3 .leaderboard-medal {
-  background: #ffe7d2;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-name span,
-.leaderboard-list li.rank-2 .leaderboard-name span,
-.leaderboard-list li.rank-3 .leaderboard-name span {
-  font-weight: 950;
-  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.75);
-}
-
 @media (max-width: 700px) {
   .info-modal-card {
     max-height: none;
@@ -3897,82 +3659,6 @@ h1 {
   .info-modal-card .info-mechanics-grid,
   .socials-content-grid {
     grid-template-columns: 1fr;
-  }
-
-  .leaderboard-list li {
-    grid-template-columns: auto auto minmax(0, 1fr);
-  }
-
-  .leaderboard-score {
-    grid-column: 3;
-  }
-}
-
-/* Revert leaderboard polish; keep top crown visible */
-
-/* Leaderboard revert: simple rows, crown kept inside bounds */
-.leaderboard-list li,
-.leaderboard-list li.rank-1,
-.leaderboard-list li.rank-2,
-.leaderboard-list li.rank-3 {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  min-height: auto;
-  padding: 9px 10px;
-  border: 3px solid #2b1239;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 5px 0 #2b1239;
-  z-index: 1;
-}
-
-.leaderboard-list li.rank-1 {
-  padding-left: 38px;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-rank,
-.leaderboard-list li.rank-1 .leaderboard-score span,
-.leaderboard-list li.rank-2 .leaderboard-rank,
-.leaderboard-list li.rank-2 .leaderboard-score span,
-.leaderboard-list li.rank-3 .leaderboard-rank,
-.leaderboard-list li.rank-3 .leaderboard-score span {
-  color: inherit;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-name span,
-.leaderboard-list li.rank-2 .leaderboard-name span,
-.leaderboard-list li.rank-3 .leaderboard-name span {
-  font-size: inherit;
-  font-weight: inherit;
-  text-shadow: none;
-}
-
-.leaderboard-list li.rank-1 .leaderboard-score {
-  font-size: 1.25rem;
-}
-
-.leaderboard-top-crown {
-  top: 9px;
-  left: 8px;
-  z-index: 5;
-  font-size: 1.35rem;
-  transform: rotate(-14deg);
-  filter: drop-shadow(2px 2px 0 #2b1239) drop-shadow(0 0 8px rgba(255, 196, 0, 0.62));
-}
-
-.leaderboard-medal {
-  display: none;
-}
-
-@media (max-width: 700px) {
-  .leaderboard-list li,
-  .leaderboard-list li.rank-1,
-  .leaderboard-list li.rank-2,
-  .leaderboard-list li.rank-3 {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .leaderboard-score {
-    grid-column: auto;
   }
 }
 
@@ -4027,46 +3713,6 @@ h1 {
     opacity: 0;
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.35) rotate(var(--spin));
   }
-}
-
-
-/* Skills: no outer panel */
-.skills-hotkeys-panel {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.skills-hotkeys-row {
-  gap: 7px;
-}
-
-.skill-hotkey {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  padding: 4px;
-  box-shadow: 0 4px 0 #2b1239, 0 0 12px rgba(255, 255, 255, 0.3);
-}
-
-.skill-cooldown-wipe {
-  inset: 4px;
-  border-radius: 10px;
-  background:
-    conic-gradient(from -90deg, rgba(27, 10, 37, 0.88) 0deg var(--cooldown-sweep), transparent var(--cooldown-sweep) 360deg),
-    radial-gradient(circle at center, rgba(43, 18, 57, 0.18) 0 54%, transparent 55%);
-}
-
-.skill-hotkey kbd {
-  font-size: 1.05rem;
-}
-
-.skill-hotkey small {
-  bottom: 5px;
-  min-width: 29px;
-  font-size: 0.48rem;
 }
 
 .basket.double-points .boost-aura {
