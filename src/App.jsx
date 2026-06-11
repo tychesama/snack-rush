@@ -12,8 +12,8 @@ const GAME_SECONDS = 45;
 const STARTING_LIVES = 3;
 const PLAYER_SPEED = 520;
 const GLOBAL_SKILL_COOLDOWN = 7;
-const DASH_DURATION = 0.22;
-const DASH_SPEED_MULTIPLIER = 4.4;
+const DASH_DURATION = 0.18;
+const DASH_SPEED_MULTIPLIER = 3.2;
 const DASH_IFRAME_SECONDS = 0.5;
 const SHIELD_DURATION = 3;
 const DOUBLE_POINTS_DURATION = 5;
@@ -621,8 +621,8 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     dashIframeRemaining: 0,
     doublePointsActive: false,
     doublePointsRemaining: 0,
-    doublePointsCueRemaining: 0,
     randomSpecialCooldown: 0,
+    randomSpecialCueRemaining: 0,
     randomSpecialLabel: '',
   });
 
@@ -648,8 +648,8 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     dashIframeRemaining: 0,
     doublePointsActive: false,
     doublePointsRemaining: 0,
-    doublePointsCueRemaining: 0,
     randomSpecialCooldown: 0,
+    randomSpecialCueRemaining: 0,
     randomSpecialLabel: '',
     failReason: '',
     elapsed: 0,
@@ -719,32 +719,9 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
 
   const applyRandomSpecial = useCallback(() => {
     const state = stateRef.current;
-    const special = ['star', 'gem', 'heart', 'nuke'][Math.floor(Math.random() * 4)];
-
-    if (special === 'star') {
-      state.dodgeActive = true;
-      state.dodgeRemaining = Math.max(state.dodgeRemaining, SHIELD_DURATION);
-      state.randomSpecialLabel = 'Star Shield';
-      state.flash = 'bonus';
-      return;
-    }
-
-    if (special === 'gem') {
-      state.score += 75;
-      state.randomSpecialLabel = '+75 Gem';
-      state.flash = 'bonus';
-      return;
-    }
-
-    if (special === 'heart') {
-      state.lives = Math.min(STARTING_LIVES, state.lives + 1);
-      state.randomSpecialLabel = 'Heart';
-      state.flash = 'sweet';
-      return;
-    }
-
-    state.items = [];
-    state.randomSpecialLabel = 'Nuke';
+    const special = ['Star Ready', 'Gem Flash', 'Heart Glow', 'Candy Nuke'][Math.floor(Math.random() * 4)];
+    state.randomSpecialLabel = special;
+    state.randomSpecialCueRemaining = 1.35;
     state.flash = 'bonus';
   }, []);
 
@@ -798,7 +775,6 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     if (skillId === 'doublePoints') {
       state.doublePointsActive = true;
       state.doublePointsRemaining = DOUBLE_POINTS_DURATION;
-      state.doublePointsCueRemaining = 1.25;
       state.flash = 'bonus';
     }
 
@@ -914,7 +890,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       state.globalSkillCooldown = Math.max(0, state.globalSkillCooldown - delta);
       state.randomSpecialCooldown = Math.max(0, state.randomSpecialCooldown - delta);
       state.dashIframeRemaining = Math.max(0, state.dashIframeRemaining - delta);
-      state.doublePointsCueRemaining = Math.max(0, state.doublePointsCueRemaining - delta);
+      state.randomSpecialCueRemaining = Math.max(0, state.randomSpecialCueRemaining - delta);
 
       if (state.dashActive) {
         state.dashRemaining = Math.max(0, state.dashRemaining - delta);
@@ -1043,8 +1019,8 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           dashIframeRemaining: state.dashIframeRemaining,
           doublePointsActive: state.doublePointsActive,
           doublePointsRemaining: state.doublePointsRemaining,
-          doublePointsCueRemaining: state.doublePointsCueRemaining,
           randomSpecialCooldown: state.randomSpecialCooldown,
+          randomSpecialCueRemaining: state.randomSpecialCueRemaining,
           randomSpecialLabel: state.randomSpecialLabel,
         });
         if (state.flash) state.flash = '';
@@ -1084,8 +1060,8 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
         />
         {snapshot.items.map((item) => <FallingSnack key={item.id} item={item} />)}
         <ConfettiBurst pieces={snapshot.confetti} />
-        <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} />
-        {(snapshot.doublePointsCueRemaining > 0 || snapshot.doublePointsActive) && <DoublePointsCue active={snapshot.doublePointsActive} />}
+        <Basket x={snapshot.basketX} evading={snapshot.evading} speeding={snapshot.speeding} movementDirection={snapshot.movementDirection} doublePoints={snapshot.doublePointsActive} />
+        {snapshot.randomSpecialCueRemaining > 0 && <RandomSpecialCue label={snapshot.randomSpecialLabel} />}
         {debugMode && <DebugHitboxes items={snapshot.items} basketX={snapshot.basketX} />}
         {gameOverHold && <GameOverHoldOverlay hold={gameOverHold} onConfirm={() => confirmGameOver(gameOverHold)} />}
         {readyCountdown > 0 && !pauseOpen && !gameOverHold && <ReadyCountdownOverlay seconds={readyCountdown} />}
@@ -1341,11 +1317,11 @@ function FallingSnack({ item }) {
   );
 }
 
-function DoublePointsCue({ active }) {
+function RandomSpecialCue({ label }) {
   return (
-    <div className={`double-points-cue ${active ? 'active' : ''}`} aria-hidden="true">
-      <span>2×</span>
-      <strong>DOUBLE POINTS</strong>
+    <div className="random-special-cue" aria-hidden="true">
+      <span>V</span>
+      <strong>{label || 'Random Special'}</strong>
     </div>
   );
 }
@@ -1368,11 +1344,11 @@ function ConfettiBurst({ pieces }) {
   ));
 }
 
-function Basket({ x, evading, speeding, movementDirection }) {
+function Basket({ x, evading, speeding, movementDirection, doublePoints }) {
   const movementClass = movementDirection < 0 ? 'moving-left' : movementDirection > 0 ? 'moving-right' : 'idle';
 
   return (
-    <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''} ${movementClass}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
+    <div className={`basket ${evading ? 'evading' : ''} ${speeding ? 'speeding' : ''} ${doublePoints ? 'double-points' : ''} ${movementClass}`} style={{ transform: `translateX(${x}px)` }} aria-label="player basket">
       <div className="boost-aura" />
       <div className="boost-flame" />
       <div className="boost-wind wind-one" />

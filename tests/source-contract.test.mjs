@@ -94,12 +94,16 @@ assert(!app.includes('className="skills-title"'), 'skills hotkeys text label sho
 assert(css.includes('.skill-cooldown-wipe') && css.includes('conic-gradient(from -90deg'), 'skills cooldown should use a clock-wipe style radial mask');
 assert(app.includes("'--cooldown-sweep': sweep"), 'skill cooldown wipe should receive live sweep styling');
 assert(app.includes('GLOBAL_SKILL_COOLDOWN = 7') && app.includes('RANDOM_SPECIAL_COOLDOWN = 15'), 'skills should use the planned 7s global cooldown and 15s random special cooldown');
-assert(app.includes('DASH_DURATION') && app.includes('DASH_SPEED_MULTIPLIER') && app.includes('dashDirection'), 'dash should be a fast dodge roll over time, not an instant teleport');
+assert(app.includes('DASH_DURATION = 0.18') && app.includes('DASH_SPEED_MULTIPLIER = 3.2') && app.includes('dashDirection'), 'dash should be a shorter/slower fast dodge roll over time, not an instant teleport');
 assert(!app.includes('state.basketX = clamp(state.basketX + direction * DASH_DISTANCE'), 'dash should not instantly move the basket by a fixed distance');
 assert(app.includes('DASH_IFRAME_SECONDS = 0.5'), 'dash should keep 0.5s invincibility frames');
 assert(app.includes('DOUBLE_POINTS_DURATION = 5') && app.includes('DOUBLE_POINTS_SLOW_MULTIPLIER = 0.55'), 'double points should apply a stronger slow during the 5s effect');
 assert(!app.includes('DOUBLE_POINTS_SLOW_DURATION') && !app.includes('doublePointsSlowRemaining'), 'double points should no longer apply a lingering slow after the effect');
-assert(app.includes('doublePointsCueRemaining') && app.includes('DoublePointsCue') && css.includes('.game-wrap.double-points') && css.includes('.double-points-cue'), 'double points should show a clear visual cue while active');
+assert(!app.includes('DoublePointsCue') && !css.includes('.double-points-cue'), 'double points should not use a notification-style cue');
+assert(app.includes('doublePointsActive={snapshot.doublePointsActive}') && app.includes("${doublePoints ? 'double-points' : ''}") && css.includes('.basket.double-points'), 'double points should change the basket like other skills');
+const randomSpecialSource = app.slice(app.indexOf('const applyRandomSpecial'), app.indexOf('const canTriggerSkill'));
+assert(app.includes('randomSpecialCueRemaining') && app.includes('RandomSpecialCue') && css.includes('.random-special-cue'), 'random special should show a visual cue for now');
+assert(!randomSpecialSource.includes('state.score +=') && !randomSpecialSource.includes('state.lives =') && !randomSpecialSource.includes('state.items = []') && !randomSpecialSource.includes('state.dodgeActive = true'), 'random special should not change gameplay yet');
 assert(app.includes('makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId, state.doublePointsActive ? 24 : 16)') && css.includes('.confetti-piece.sparkle'), 'candy catches should create bigger confetti/effects, especially during double points');
 assert(app.includes('disabled={state.disabled}') && app.includes('globalSkillCooldown') && app.includes('randomSpecialCooldown'), 'skill buttons should disable during pause, global cooldown, and random-special cooldown states');
 assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'dash'") && app.includes("id: 'doublePoints'") && app.includes("id: 'randomSpecial'"), 'skills hotkeys should expose dash, shield, double points, and random special');
@@ -107,6 +111,7 @@ assert(!app.includes("id: 'frenzy'") && !app.includes("id: 'magnet'") && !app.in
 assert(app.includes("key === 'c'") && app.includes("key === 'v'") && app.includes("handleSkillPress('doublePoints')") && app.includes("handleSkillPress('randomSpecial')"), 'new skill hotkeys should respond from keyboard');
 assert(app.includes('skillPressTimers'), 'clicking a skill should show a countdown timer');
 assert(!app.includes('function AbilityPanel'), 'old bottom skills panels should be removed');
+assert(css.includes('/* Skills: no outer panel */') && css.includes('border-radius: 14px') && css.includes('conic-gradient(from -90deg'), 'skill UI should remove the outer panel, use rounded-square buttons, and start cooldown at 12:00');
 assert(css.includes('.debug-hitbox::after'), 'debug hitboxes should display labels');
 assert(app.includes('function HeartsDisplay'), 'hearts should be shown below the timer');
 assert(app.includes('className={`stat-card timer-card hero-timer ${timerMood}`}') && css.includes('.stat-card.hero-timer .hearts-display'), 'hearts should be centered inside the rush clock panel below the timer');
