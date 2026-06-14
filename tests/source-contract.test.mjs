@@ -76,14 +76,16 @@ assert(css.includes('.controls-panel'), 'one-panel controls styles should exist'
 assert(css.includes('.control-key:hover'), 'designed key controls should be hoverable');
 assert(app.includes('Control Panel') && !app.includes('How to play'), 'main menu controls should keep the compact heading without the old badge');
 assert(css.includes('.menu-modal-overlay') && css.includes('.info-modal-card') && css.includes('.modal-social-logo-row'), 'combined info modal styles should exist');
-assert(css.includes('.info-modal-card') && css.includes('overflow: hidden') && css.includes('.socials-content-grid'), 'info modal should hide scrollbars and use the socials panel space');
+assert(css.includes('.info-modal-card') && css.includes('overflow: auto') && css.includes('.socials-content-grid'), 'info modal should allow scrolling when mechanics/socials exceed the viewport and use the socials panel space');
 assert(!app.includes('leaderboard-medal') && css.includes('leaderboard-top-crown') && css.includes('Top leaderboard ranks: medal-like rows, crown kept inside bounds'), 'leaderboard should keep the crown inside bounds while restoring top-three visual effects');
 assert(app.includes('main-controls-top-grid') && css.includes('.main-controls-top-grid'), 'control panel should use a compact top grid layout');
 assert(!app.includes('main-section-kicker') && app.includes('main-rule-label') && !app.includes('main-rule-kicker'), 'control panel should use plain text labels instead of circular badge labels');
 assert(app.includes('Move Basket') && app.includes('Skills') && app.includes('Catch') && app.includes('Avoid') && app.includes('Specials'), 'menu and info modal should show plain text section labels');
 assert(app.indexOf('Catch') < app.indexOf('function ControlsPanel'), 'Catch mechanics should live in the info modal instead of the main controls panel');
 assert(app.indexOf('Avoid') < app.indexOf('function ControlsPanel'), 'Avoid mechanics should live in the info modal instead of the main controls panel');
-assert(app.includes('Difficulty rises every minute') && app.includes('2:30, 5:00, 7:30, and 9:30'), 'info modal should describe minute difficulty spikes and snack storm timestamps');
+assert(app.includes('Current rules assume the planned loop is live') && app.includes('Adventure Mode is the playable run now') && app.includes('Snack storms warn first'), 'info modal should describe the current planned mechanics as completed');
+assert(app.includes('function ModeSelectModal') && app.includes('Pick a Mode') && app.includes('Sugar Rush') && app.includes('Adventure Mode') && app.includes('Timed Rush'), 'start flow should open a three-card mode picker');
+assert(app.includes("onStart('adventure')") && app.includes('aria-disabled={mode.locked}') && app.includes('tabIndex={mode.locked ? -1 : 0}') && css.includes('.mode-card.locked'), 'only Adventure Mode should start while other mode cards are locked but styled');
 assert(app.includes('Dash') && app.includes('Shield') && app.includes('Double Points') && app.includes('Random Special'), 'control panel should show the planned skills');
 assert(!app.includes('Invincibility'), 'planned skill should be renamed to Shield');
 assert(!app.includes('>Live<') && !app.includes('>Soon<'), 'control panel skills should not show live/soon badges');

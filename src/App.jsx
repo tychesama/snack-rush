@@ -329,6 +329,7 @@ function InfoModal({ open, onClose, socialLinks }) {
 
   const goodItems = ['🍩', '🧁', '🍪', '🍭'];
   const badItems = ['☠️', '🤮', '🦠', '💀'];
+  const specialItems = ['⭐', '💎', '🛡️', '⚡', '🧲', '❤️'];
 
   return (
     <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>
@@ -338,7 +339,7 @@ function InfoModal({ open, onClose, socialLinks }) {
         </button>
         <p className="modal-eyebrow">Rush Guide</p>
         <h2>Game Mechanics</h2>
-        <p>Catch sweets, avoid rotten drops, time your skills, and survive the rush clock as the candy shop gets meaner.</p>
+        <p>Current rules assume the planned loop is live: pick Adventure Mode, catch sweets for Sugar Score, chain Combo Pop, use skills, and survive escalating candy-shop chaos.</p>
 
         <div className="info-mechanics-grid">
           <section className="info-mechanic-card">
@@ -346,7 +347,7 @@ function InfoModal({ open, onClose, socialLinks }) {
             <div className="main-rule-icons" aria-label="Good snacks to catch">
               {goodItems.map((item) => <span key={item} className="main-rule-token">{item}</span>)}
             </div>
-            <small>Good snacks add score, show a Combo Pop multiplier, and reset the 3.5s combo timer.</small>
+            <small>Good snacks add Sugar Score, raise Combo Pop, and refresh the short combo timer.</small>
           </section>
 
           <section className="info-mechanic-card danger">
@@ -354,22 +355,30 @@ function InfoModal({ open, onClose, socialLinks }) {
             <div className="main-rule-icons" aria-label="Bad snacks to avoid">
               {badItems.map((item) => <span key={item} className="main-rule-token">{item}</span>)}
             </div>
-            <small>Rotten drops cost hearts and instantly break combo unless protected.</small>
+            <small>Rotten drops cost hearts and break combo unless Dash frames or Shield protection save you.</small>
           </section>
 
-          <section className="info-mechanic-card wide">
-            <strong>Difficulty spikes</strong>
-            <small>Difficulty rises every minute, increasing fall pressure and rotten snack danger. In the planned 10-minute mode, it caps at minute 10.</small>
+          <section className="info-mechanic-card special-info-card">
+            <strong>Specials</strong>
+            <div className="main-rule-icons" aria-label="Special snacks and powerups">
+              {specialItems.map((item) => <span key={item} className="main-rule-token special-token-preview">{item}</span>)}
+            </div>
+            <small>Star, Gem, Shield, Lightning, Magnet, and Heart are treated as distinct power pickups with clear status feedback.</small>
           </section>
 
-          <section className="info-mechanic-card wide">
-            <strong>Snack storms</strong>
-            <small>Major rushes are planned at 2:30, 5:00, 7:30, and 9:30. Storms last 20 seconds, flood the board, add more bombs/rotten drops, and guarantee a powerup at the start.</small>
-          </section>
-
-          <section className="info-mechanic-card wide">
+          <section className="info-mechanic-card">
             <strong>Skills</strong>
-            <small>Z Dash, X Shield, C Double Points, and V Random Special are live in-game skills. Skill use starts a shared 7-second global cooldown.</small>
+            <small>Z Dash, X Shield, C Double Points, and V Random Special use clear cooldowns. Skill buttons and keyboard triggers follow the same rules.</small>
+          </section>
+
+          <section className="info-mechanic-card">
+            <strong>Modes</strong>
+            <small>Adventure Mode is the playable run now. Sugar Rush and Timed Rush are shown in the mode picker as locked previews.</small>
+          </section>
+
+          <section className="info-mechanic-card">
+            <strong>Storms</strong>
+            <small>Snack storms warn first, then spike spawn pressure, danger, and reward potential without hiding the basket catch zone.</small>
           </section>
         </div>
 
@@ -391,6 +400,49 @@ function InfoModal({ open, onClose, socialLinks }) {
               <small>Heavily assisted by Codex</small>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModeSelectModal({ open, onClose, onStartAdventure }) {
+  if (!open) return null;
+
+  const modes = [
+    { id: 'sugar-rush', title: 'Sugar Rush', tag: 'Locked preview', emoji: '⚡', description: 'One-minute chaos for quick score chasing. Fast, flashy, and not open yet.', locked: true },
+    { id: 'adventure', title: 'Adventure Mode', tag: 'Playable now', emoji: '🗺️', description: 'The main SnackRush run: timer pressure, skills, specials, combo scoring, and escalating snack storms.', locked: false },
+    { id: 'timed-rush', title: 'Timed Rush', tag: 'Locked preview', emoji: '⏱️', description: 'A focused score attack with stricter clock rules. Coming after Adventure feels right.', locked: true },
+  ];
+
+  return (
+    <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>
+      <div id="snackrush-mode-modal" className="menu-modal-card mode-select-modal-card" role="dialog" aria-modal="true" aria-label="Choose SnackRush mode" onMouseDown={(event) => event.stopPropagation()}>
+        <button type="button" className="menu-modal-close" onClick={onClose} aria-label="Close mode select">
+          ×
+        </button>
+        <p className="modal-eyebrow">Choose your rush</p>
+        <h2>Pick a Mode</h2>
+        <p>Adventure Mode is ready. The other modes stay visible as polished locked cards for now.</p>
+
+        <div className="mode-card-grid">
+          {modes.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              className={`mode-card ${mode.locked ? 'locked' : 'active'}`}
+              onClick={mode.locked ? undefined : onStartAdventure}
+              aria-disabled={mode.locked}
+              tabIndex={mode.locked ? -1 : 0}
+              aria-label={`${mode.title} ${mode.locked ? 'locked' : 'playable'}`}
+            >
+              <span className="mode-card-emoji" aria-hidden="true">{mode.emoji}</span>
+              <small>{mode.tag}</small>
+              <strong>{mode.title}</strong>
+              <span>{mode.description}</span>
+              <b>{mode.locked ? 'Coming soon' : 'Play Adventure'}</b>
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -445,6 +497,7 @@ function PlayerNameModal({ open, playerProfile, onChangePlayerProfile, onClose }
 function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfile }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [playerNameOpen, setPlayerNameOpen] = useState(false);
+  const [modeSelectOpen, setModeSelectOpen] = useState(false);
   const socialLinks = [
     { id: 'facebook', label: 'Facebook', href: '#' },
     { id: 'linkedin', label: 'LinkedIn', href: '#' },
@@ -479,7 +532,7 @@ function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfil
             Info
           </button>
 
-          <button className="primary-button jumbo-button main-start-button" onClick={onStart}>
+          <button className="primary-button jumbo-button main-start-button" onClick={() => setModeSelectOpen(true)} aria-controls="snackrush-mode-modal">
             Start Rush!
           </button>
 
@@ -505,6 +558,10 @@ function StartScreen({ onStart, leaderboard, playerProfile, onChangePlayerProfil
       </section>
 
       <InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} socialLinks={socialLinks} />
+      <ModeSelectModal open={modeSelectOpen} onClose={() => setModeSelectOpen(false)} onStartAdventure={() => {
+        setModeSelectOpen(false);
+        onStart('adventure');
+      }} />
       <PlayerNameModal open={playerNameOpen} playerProfile={playerProfile} onChangePlayerProfile={onChangePlayerProfile} onClose={() => setPlayerNameOpen(false)} />
     </>
   );
