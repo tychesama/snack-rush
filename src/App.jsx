@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { ADVENTURE_DURATION_SECONDS, getDifficultyConfig } from './game/difficulty.js';
+import { SPECIAL_TYPES, getAllSpecials } from './game/specials.js';
 import { COMBO_TIMEOUT_SECONDS, calculateCatchPoints, formatComboMultiplier } from './game/scoring.js';
 
 const GAME_WIDTH = 980;
@@ -9,9 +11,14 @@ const ITEM_SIZE = 44;
 const ITEM_HITBOX_INSET_X = 8;
 const ITEM_HITBOX_TOP_INSET = 8;
 const ITEM_HITBOX_BOTTOM_INSET = 8;
-const GAME_SECONDS = 45;
+const GAME_SECONDS = ADVENTURE_DURATION_SECONDS;
 const STARTING_LIVES = 3;
 const PLAYER_SPEED = 520;
+const LIGHTNING_DURATION = 6;
+const LIGHTNING_SPEED_MULTIPLIER = 1.45;
+const STAR_DURATION = 5;
+const MAGNET_DURATION = 6;
+const MAGNET_PULL_SPEED = 260;
 const GLOBAL_SKILL_COOLDOWN = 7;
 const DASH_DURATION = 0.18;
 const DASH_SPEED_MULTIPLIER = 3.2;
@@ -36,7 +43,7 @@ const DEBUG_HITBOXES_DEFAULT = false;
 
 const GOOD_SNACKS = ['🍩', '🧁', '🍪', '🍭', '🍫', '🍬', '🥨', '🍿'];
 const BAD_SNACKS = ['☠️', '🤮', '🦠', '💀'];
-const POWER_SNACKS = ['⭐', '💎'];
+const SPECIAL_SNACKS = getAllSpecials();
 const CONFETTI_COLORS = ['#ff2f91', '#ffb000', '#31d6ff', '#7a2ee8', '#69ff9f', '#fff46b'];
 const LEADERBOARD_KEY = 'snackrush-local-leaderboard-v1';
 const PLAYER_PROFILE_KEY = 'snackrush-player-profile-v1';
@@ -55,24 +62,27 @@ const DEFAULT_LEADERBOARD = [
   { id: 'default-9', name: 'Jelly Bean', score: 55, caught: 5, tag: 'Tiny Treat', createdAt: 6 },
 ];
 
-const freshItem = (id) => {
+const freshItem = (id, difficulty = getDifficultyConfig(0)) => {
   const roll = Math.random();
-  const type = roll > 0.84 ? 'rotten' : roll > 0.76 ? 'bonus' : 'snack';
+  const type = roll < difficulty.badChance ? 'rotten' : roll < difficulty.badChance + difficulty.specialChance ? 'bonus' : 'snack';
+  const special = type === 'bonus' ? SPECIAL_SNACKS[Math.floor(Math.random() * SPECIAL_SNACKS.length)] : null;
   const emoji =
     type === 'rotten'
       ? BAD_SNACKS[Math.floor(Math.random() * BAD_SNACKS.length)]
       : type === 'bonus'
-        ? POWER_SNACKS[Math.floor(Math.random() * POWER_SNACKS.length)]
+        ? special.icon
         : GOOD_SNACKS[Math.floor(Math.random() * GOOD_SNACKS.length)];
+  const baseSpeed = type === 'rotten' ? 145 + Math.random() * 145 : type === 'bonus' ? 165 + Math.random() * 155 : 185 + Math.random() * 180;
 
   return {
     id,
     type,
+    specialId: special?.id || null,
     emoji,
     x: 28 + Math.random() * (GAME_WIDTH - ITEM_SIZE - 56),
     y: -ITEM_SIZE,
-    vx: (Math.random() - 0.5) * MAX_FALL_DRIFT * 2,
-    speed: type === 'rotten' ? 145 + Math.random() * 145 : 185 + Math.random() * 180,
+    vx: (Math.random() - 0.5) * MAX_FALL_DRIFT * 2 * difficulty.driftMultiplier,
+    speed: baseSpeed * difficulty.fallSpeedMultiplier,
     spin: Math.random() > 0.5 ? 'spinA' : 'spinB',
   };
 };
@@ -329,7 +339,7 @@ function InfoModal({ open, onClose, socialLinks }) {
 
   const goodItems = ['🍩', '🧁', '🍪', '🍭'];
   const badItems = ['☠️', '🤮', '🦠', '💀'];
-  const specialItems = ['⭐', '💎', '🛡️', '⚡', '🧲', '❤️'];
+  const specialItems = SPECIAL_SNACKS;
 
   return (
     <div className="menu-modal-overlay" role="presentation" onMouseDown={onClose}>
@@ -361,9 +371,9 @@ function InfoModal({ open, onClose, socialLinks }) {
           <section className="info-mechanic-card special-info-card">
             <strong>Specials</strong>
             <div className="main-rule-icons" aria-label="Special snacks and powerups">
-              {specialItems.map((item) => <span key={item} className="main-rule-token special-token-preview">{item}</span>)}
+              {specialItems.map((item) => <span key={item.id} className="main-rule-token special-token-preview">{item.icon}</span>)}
             </div>
-            <small>Star, Gem, Shield, Lightning, Magnet, and Heart are treated as distinct power pickups with clear status feedback.</small>
+            <small>Star, Magnet, Nuke, Shield, Lightning, and Heart are treated as distinct power pickups with the same current bonus border/effect treatment.</small>
           </section>
 
           <section className="info-mechanic-card">
@@ -411,7 +421,7 @@ function ModeSelectModal({ open, onClose, onStartAdventure }) {
 
   const modes = [
     { id: 'sugar-rush', title: 'Sugar Rush', tag: 'Locked preview', emoji: '⚡', description: 'One-minute chaos for quick score chasing. Fast, flashy, and not open yet.', locked: true },
-    { id: 'adventure', title: 'Adventure Mode', tag: 'Playable now', emoji: '🗺️', description: 'The main SnackRush run: timer pressure, skills, specials, combo scoring, and escalating snack storms.', locked: false },
+    { id: 'adventure', title: 'Adventure Mode', tag: 'Playable now', emoji: '🗺️', description: 'The main SnackRush run: 10-minute timer pressure, skills, specials, combo scoring, and rising difficulty.', locked: false },
     { id: 'timed-rush', title: 'Timed Rush', tag: 'Locked preview', emoji: '⏱️', description: 'A focused score attack with stricter clock rules. Coming after Adventure feels right.', locked: true },
   ];
 
@@ -574,14 +584,11 @@ function ControlsPanel() {
     { id: 'double-points', key: 'C', name: 'Double Points', tone: 'skill-ready', tooltip: 'Double your score gains for 5 seconds, but move slower while it is active.' },
     { id: 'random-special', key: 'V', name: 'Random Special', tone: 'skill-ready', tooltip: 'Instantly trigger one random special effect with its own 15-second cooldown.' },
   ];
-  const specialItems = [
-    { emoji: '⭐', name: 'Star', tooltip: 'Bonus pickup. Grab it for a premium score pop.' },
-    { emoji: '💎', name: 'Gem', tooltip: 'Bonus pickup. Worth extra points when you catch it.' },
-    { emoji: '🛡️', name: 'Shield', tooltip: 'Menu preview only for now. Planned as a safety special.' },
-    { emoji: '⚡', name: 'Lightning', tooltip: 'Menu preview only for now. Planned as a speed-style special.' },
-    { emoji: '🧲', name: 'Magnet', tooltip: 'Menu preview only for now. Planned as a candy-pull special.' },
-    { emoji: '🔥', name: 'Fire', tooltip: 'High-energy special teaser slot.' },
-  ];
+  const specialItems = SPECIAL_SNACKS.map((item) => ({
+    emoji: item.icon,
+    name: item.label,
+    tooltip: item.description,
+  }));
 
   return (
     <section className="controls-panel main-controls-panel" aria-label="SnackRush controls">
@@ -685,6 +692,15 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     randomSpecialCooldown: 0,
     randomSpecialCueRemaining: 0,
     randomSpecialLabel: '',
+    starActive: false,
+    starRemaining: 0,
+    shieldCharges: 0,
+    lightningActive: false,
+    lightningRemaining: 0,
+    magnetActive: false,
+    magnetRemaining: 0,
+    difficultyLevel: 1,
+    elapsed: 0,
   });
 
   const stateRef = useRef({
@@ -715,6 +731,14 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     randomSpecialCooldown: 0,
     randomSpecialCueRemaining: 0,
     randomSpecialLabel: '',
+    starActive: false,
+    starRemaining: 0,
+    shieldCharges: 0,
+    lightningActive: false,
+    lightningRemaining: 0,
+    magnetActive: false,
+    magnetRemaining: 0,
+    difficultyLevel: 1,
     failReason: '',
     elapsed: 0,
     spawnClock: 0,
@@ -781,18 +805,56 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     setSkillPressTimers(skillPressTimersRef.current);
   }, []);
 
+  const applySpecialEffect = useCallback((specialId) => {
+    const state = stateRef.current;
+    if (!specialId) return;
+
+    if (specialId === SPECIAL_TYPES.STAR) {
+      state.starActive = true;
+      state.starRemaining = STAR_DURATION;
+      state.flash = 'bonus';
+    }
+
+    if (specialId === SPECIAL_TYPES.SHIELD) {
+      state.shieldCharges = Math.max(state.shieldCharges, 1);
+      state.flash = 'bonus';
+    }
+
+    if (specialId === SPECIAL_TYPES.HEART) {
+      state.lives = Math.min(STARTING_LIVES, state.lives + 1);
+      state.flash = 'sweet';
+    }
+
+    if (specialId === SPECIAL_TYPES.NUKE) {
+      state.items = state.items.filter((item) => item.type === 'bonus');
+      state.flash = 'bonus';
+    }
+
+    if (specialId === SPECIAL_TYPES.LIGHTNING) {
+      state.lightningActive = true;
+      state.lightningRemaining = LIGHTNING_DURATION;
+      state.flash = 'bonus';
+    }
+
+    if (specialId === SPECIAL_TYPES.MAGNET) {
+      state.magnetActive = true;
+      state.magnetRemaining = MAGNET_DURATION;
+      state.flash = 'bonus';
+    }
+  }, []);
+
   const applyRandomSpecial = useCallback(() => {
     const state = stateRef.current;
-    const special = ['Star Ready', 'Gem Flash', 'Heart Glow', 'Candy Nuke'][Math.floor(Math.random() * 4)];
-    state.randomSpecialLabel = special;
+    const randomSpecial = SPECIAL_SNACKS[Math.floor(Math.random() * SPECIAL_SNACKS.length)];
+    state.randomSpecialLabel = `${randomSpecial.label} Ready`;
     state.randomSpecialCueRemaining = 1.35;
-    state.flash = 'bonus';
-  }, []);
+    applySpecialEffect(randomSpecial.id);
+  }, [applySpecialEffect]);
 
   const canTriggerSkill = useCallback((skillId) => {
     if (pauseOpenRef.current || readyCountdownRef.current > 0 || gameOverHoldRef.current) return false;
 
-    if (skillId === 'debug') return !debugMode && !skillPressTimersRef.current.debug;
+    if (skillId === 'debug') return true;
 
     const state = stateRef.current;
     if (state.globalSkillCooldown > 0) return false;
@@ -809,7 +871,6 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
     const state = stateRef.current;
 
     if (skillId === 'debug') {
-      pulseSkillCountdown('debug');
       setDebugMode((enabled) => !enabled);
       return;
     }
@@ -955,6 +1016,12 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       state.randomSpecialCooldown = Math.max(0, state.randomSpecialCooldown - delta);
       state.dashIframeRemaining = Math.max(0, state.dashIframeRemaining - delta);
       state.randomSpecialCueRemaining = Math.max(0, state.randomSpecialCueRemaining - delta);
+      state.starRemaining = Math.max(0, state.starRemaining - delta);
+      if (state.starRemaining === 0) state.starActive = false;
+      state.lightningRemaining = Math.max(0, state.lightningRemaining - delta);
+      if (state.lightningRemaining === 0) state.lightningActive = false;
+      state.magnetRemaining = Math.max(0, state.magnetRemaining - delta);
+      if (state.magnetRemaining === 0) state.magnetActive = false;
 
       if (state.dashActive) {
         state.dashRemaining = Math.max(0, state.dashRemaining - delta);
@@ -975,18 +1042,19 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       }
 
       const movementDirection = state.dashActive ? state.dashDirection : direction;
-      state.evading = state.dodgeActive || state.dashIframeRemaining > 0;
-      state.speeding = state.dashActive || state.dashIframeRemaining > 0;
+      state.evading = state.dodgeActive || state.starActive || state.dashIframeRemaining > 0;
+      state.speeding = state.dashActive || state.lightningActive || state.dashIframeRemaining > 0;
       state.movementDirection = movementDirection;
-      const currentSpeed = PLAYER_SPEED * (state.dashActive ? DASH_SPEED_MULTIPLIER : state.doublePointsActive ? DOUBLE_POINTS_SLOW_MULTIPLIER : 1);
+      const currentSpeed = PLAYER_SPEED * (state.dashActive ? DASH_SPEED_MULTIPLIER : state.lightningActive ? LIGHTNING_SPEED_MULTIPLIER : state.doublePointsActive ? DOUBLE_POINTS_SLOW_MULTIPLIER : 1);
       const previousBasketX = state.basketX;
       state.basketX = clamp(state.basketX + movementDirection * currentSpeed * delta, 12, GAME_WIDTH - BASKET_WIDTH - 12);
 
+      const difficulty = getDifficultyConfig(state.elapsed);
+      state.difficultyLevel = difficulty.level;
       state.spawnClock -= delta;
-      const spawnDelay = Math.max(0.28, 0.78 - state.elapsed * 0.01);
-      if (state.spawnClock <= 0) {
-        state.items.push(freshItem(state.nextId++));
-        state.spawnClock = spawnDelay;
+      if (state.spawnClock <= 0 && state.items.length < difficulty.maxItems) {
+        state.items.push(freshItem(state.nextId++, difficulty));
+        state.spawnClock = difficulty.spawnDelay;
       }
 
       state.confetti = state.confetti
@@ -1019,12 +1087,20 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       }
 
       const survivors = [];
+      let screenCleared = false;
       for (const item of state.items) {
+        if (screenCleared) break;
         const updated = {
           ...item,
           x: item.x + item.vx * delta,
           y: item.y + item.speed * delta,
         };
+        if (state.magnetActive && updated.type !== 'rotten') {
+          const basketCenter = state.basketX + BASKET_WIDTH / 2;
+          const itemCenter = updated.x + ITEM_SIZE / 2;
+          const pullDirection = Math.sign(basketCenter - itemCenter);
+          updated.x += pullDirection * MAGNET_PULL_SPEED * delta;
+        }
         if (updated.x <= 12 || updated.x >= GAME_WIDTH - ITEM_SIZE - 12) {
           updated.x = clamp(updated.x, 12, GAME_WIDTH - ITEM_SIZE - 12);
           updated.vx = -updated.vx;
@@ -1032,8 +1108,14 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
 
         if (basketCatchesItem(item, updated, state.basketX, previousBasketX)) {
           if (updated.type === 'rotten') {
-            if (state.dodgeActive || state.dashIframeRemaining > 0) {
+            if (state.dodgeActive || state.starActive || state.dashIframeRemaining > 0) {
               survivors.push(updated);
+              continue;
+            }
+
+            if (state.shieldCharges > 0) {
+              state.shieldCharges -= 1;
+              state.flash = 'bonus';
               continue;
             }
 
@@ -1058,6 +1140,13 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
             state.score += earnedPoints;
             state.caught += 1;
             state.flash = updated.type === 'bonus' ? 'bonus' : 'sweet';
+            if (updated.type === 'bonus') {
+              applySpecialEffect(updated.specialId);
+              if (updated.specialId === SPECIAL_TYPES.NUKE) {
+                survivors.length = 0;
+                screenCleared = true;
+              }
+            }
             const burst = makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId, state.doublePointsActive ? 24 : 16);
             state.nextConfettiId += burst.length;
             state.confetti.push(...burst);
@@ -1086,6 +1175,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           score: state.score,
           lives: state.lives,
           timeLeft: 0,
+          elapsed: state.elapsed,
           caught: state.caught,
           combo: state.combo,
           comboIdleRemaining: state.comboIdleRemaining,
@@ -1110,6 +1200,7 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
           score: state.score,
           lives: state.lives,
           timeLeft: state.timeLeft,
+          elapsed: state.elapsed,
           caught: state.caught,
           combo: state.combo,
           comboIdleRemaining: state.comboIdleRemaining,
@@ -1144,14 +1235,14 @@ function GameBoard({ onGameOver, onMainMenu, onRestart }) {
       stateRef.current.running = false;
       cancelAnimationFrame(animationRef.current);
     };
-  }, [finishGame]);
+  }, [applySpecialEffect, finishGame]);
 
   return (
     <section className={`game-wrap ${snapshot.flash} ${snapshot.evading ? 'evading' : ''} ${snapshot.speeding ? 'speeding' : ''} ${snapshot.doublePointsActive ? 'double-points' : ''} ${snapshot.comboBreakRemaining > 0 ? 'combo-broke' : ''} ${pauseOpen ? 'paused' : ''} ${gameOverHold ? 'gameover-hold' : ''}`} aria-label="SnackRush game area">
-      <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} lives={snapshot.lives} combo={snapshot.combo} comboBreakRemaining={snapshot.comboBreakRemaining} />
+      <Hud score={snapshot.score} timeLeft={snapshot.timeLeft} elapsed={snapshot.elapsed} lives={snapshot.lives} combo={snapshot.combo} comboBreakRemaining={snapshot.comboBreakRemaining} />
       <div className="game-board" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
         <div className="shop-awning" />
-        <div className="conveyor-label">SNACK STORM</div>
+        <div className="conveyor-label">ADVENTURE RUSH</div>
         <SkillsHotkeysPanel
           debugMode={debugMode}
           paused={pauseOpen}
@@ -1218,9 +1309,9 @@ function ReadyCountdownOverlay({ seconds }) {
   );
 }
 
-function Hud({ score, timeLeft, lives, combo, comboBreakRemaining }) {
-  const shownTime = Math.ceil(timeLeft);
-  const timerMood = shownTime <= 5 ? 'timer-critical' : shownTime <= 10 ? 'timer-warning' : '';
+function Hud({ score, timeLeft, elapsed, lives, combo, comboBreakRemaining }) {
+  const shownTime = Math.floor(elapsed);
+  const timerMood = timeLeft <= 5 ? 'timer-critical' : timeLeft <= 10 ? 'timer-warning' : '';
   const comboValue = combo > 0 ? formatComboMultiplier(combo) : '—';
 
   return (
@@ -1261,30 +1352,19 @@ function getAbilityProgress(seconds, totalSeconds) {
 }
 
 const SKILL_HOTKEYS = [
-  { id: 'dash', keyName: 'Z', label: 'Dash' },
-  { id: 'shield', keyName: 'X', label: 'Shield' },
-  { id: 'doublePoints', keyName: 'C', label: '2x Points' },
-  { id: 'randomSpecial', keyName: 'V', label: 'Random' },
-  { id: 'debug', keyName: 'H', label: 'Hitbox' },
+  { id: 'dash', keyName: 'Z', label: 'Dash', art: '💨' },
+  { id: 'shield', keyName: 'X', label: 'Shield', art: '🛡️' },
+  { id: 'doublePoints', keyName: 'C', label: '2x Points', art: '✦2x' },
+  { id: 'randomSpecial', keyName: 'V', label: 'Random', art: '🎲' },
 ];
 
-function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movementDirection, globalSkillCooldown, dashIframeRemaining, dodgeActive, dodgeRemaining, doublePointsActive, doublePointsRemaining, randomSpecialCooldown, randomSpecialLabel, onSkillPress }) {
+function SkillsHotkeysPanel({ paused, locked, skillPressTimers, movementDirection, globalSkillCooldown, dashIframeRemaining, dodgeActive, dodgeRemaining, doublePointsActive, doublePointsRemaining, randomSpecialCooldown, onSkillPress }) {
   const getSkillState = (skill) => {
-    if (skill.id === 'debug') {
-      const remaining = debugMode ? skillPressTimers.debug || SKILL_PRESS_FEEDBACK_SECONDS : skillPressTimers.debug || 0;
-      return {
-        shown: remaining > 0 || debugMode,
-        disabled: paused || locked || remaining > 0 || debugMode,
-        remaining,
-        total: SKILL_PRESS_FEEDBACK_SECONDS,
-        label: skill.label,
-      };
-    }
-
     if (skill.id === 'dash') {
       const remaining = dashIframeRemaining > 0 ? dashIframeRemaining : globalSkillCooldown;
       return {
         shown: remaining > 0,
+        cooldown: remaining > 0,
         disabled: paused || locked || globalSkillCooldown > 0 || !movementDirection,
         remaining,
         total: dashIframeRemaining > 0 ? DASH_IFRAME_SECONDS : GLOBAL_SKILL_COOLDOWN,
@@ -1296,6 +1376,7 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movem
       const remaining = dodgeActive ? dodgeRemaining : globalSkillCooldown;
       return {
         shown: remaining > 0,
+        cooldown: remaining > 0,
         disabled: paused || locked || globalSkillCooldown > 0 || dodgeActive,
         remaining,
         total: dodgeActive ? SHIELD_DURATION : GLOBAL_SKILL_COOLDOWN,
@@ -1307,6 +1388,7 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movem
       const remaining = doublePointsActive ? doublePointsRemaining : globalSkillCooldown;
       return {
         shown: remaining > 0,
+        cooldown: remaining > 0,
         disabled: paused || locked || globalSkillCooldown > 0 || doublePointsActive,
         remaining,
         total: doublePointsActive ? DOUBLE_POINTS_DURATION : GLOBAL_SKILL_COOLDOWN,
@@ -1318,6 +1400,7 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movem
       const remaining = Math.max(globalSkillCooldown, randomSpecialCooldown);
       return {
         shown: remaining > 0,
+        cooldown: remaining > 0,
         disabled: paused || locked || globalSkillCooldown > 0 || randomSpecialCooldown > 0,
         remaining,
         total: randomSpecialCooldown > globalSkillCooldown ? RANDOM_SPECIAL_COOLDOWN : GLOBAL_SKILL_COOLDOWN,
@@ -1325,7 +1408,7 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movem
       };
     }
 
-    return { shown: false, disabled: paused || locked, remaining: 0, total: GLOBAL_SKILL_COOLDOWN, label: skill.label };
+    return { shown: false, cooldown: false, disabled: paused || locked, remaining: 0, total: GLOBAL_SKILL_COOLDOWN, label: skill.label };
   };
 
   return (
@@ -1333,22 +1416,22 @@ function SkillsHotkeysPanel({ debugMode, paused, locked, skillPressTimers, movem
       <div className="skills-hotkeys-row">
         {SKILL_HOTKEYS.map((skill) => {
           const state = getSkillState(skill);
-          const progress = getAbilityProgress(state.remaining || (state.shown ? state.total : 0), state.total);
+          const progress = state.cooldown ? getAbilityProgress(state.remaining, state.total) : 0;
           const sweep = `${Math.round(progress * 360)}deg`;
 
           return (
             <button
               key={skill.id}
               type="button"
-              className={`skill-hotkey ${skill.id} ${state.shown ? 'active' : ''}`}
+              className={`skill-hotkey ${skill.id} ${state.shown ? 'active' : ''} ${state.cooldown ? 'cooldown' : ''}`}
               style={{ '--cooldown-sweep': sweep }}
               onClick={() => onSkillPress(skill.id)}
               aria-label={`${skill.label} skill hotkey`}
               disabled={state.disabled}
             >
               <span className="skill-cooldown-wipe" aria-hidden="true" />
-              <kbd>{skill.keyName}</kbd>
-              <small>{state.shown ? formatAbilityTime(state.remaining || state.total) : state.label}</small>
+              <span className="skill-art" aria-hidden="true">{skill.art}</span>
+              <span className="skill-label">{state.cooldown ? formatAbilityTime(state.remaining) : state.label}</span>
             </button>
           );
         })}

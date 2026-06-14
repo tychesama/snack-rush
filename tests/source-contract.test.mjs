@@ -13,7 +13,7 @@ function assert(condition, message) {
 }
 
 assert(!existsSync(join(root, 'reference basket.png')), 'reference basket.png should be deleted');
-assert(pkg.scripts.test === 'node tests/scoring.test.mjs && node tests/source-contract.test.mjs', 'package.json should expose scoring and source contract tests');
+assert(pkg.scripts.test === 'node tests/scoring.test.mjs && node tests/difficulty.test.mjs && node tests/source-contract.test.mjs', 'package.json should expose scoring, difficulty, and source contract tests');
 
 assert(app.includes('const DEBUG_HITBOXES_DEFAULT = false;'), 'debug hitboxes should default to off');
 assert(app.includes('const [debugMode, setDebugMode] = useState(DEBUG_HITBOXES_DEFAULT);'), 'game state should track hitbox debug mode');
@@ -21,6 +21,7 @@ assert(app.includes('function DebugHitboxes'), 'debug hitbox overlay component s
 assert(app.includes('debugMode && <DebugHitboxes'), 'debug hitbox overlay should render when debug mode is enabled');
 assert(app.includes('function SkillsHotkeysPanel'), 'skills hotkeys panel should replace the old debug panel');
 assert(app.includes("key === 'h'"), 'H key should toggle hitbox debug mode');
+assert(!app.includes("id: 'debug', keyName: 'H'") && !app.includes('Hitbox skill hotkey'), 'debug hitbox toggle should be keyboard-only and hidden from the skill button row');
 
 assert(app.includes('pauseOpen'), 'game state should track whether the Escape pause menu is open');
 assert(app.includes('function PauseMenu'), 'pause menu component should exist');
@@ -93,7 +94,11 @@ assert(app.includes('special-token') && css.includes('.special-token::after') &&
 assert(css.includes('.main-skill-card:hover') && css.includes('scale(1.02)') && !css.includes('rotate(var(--skill-tilt'), 'skill cards should hover straight so tooltips do not tilt');
 assert(css.includes('.skills-hotkeys-panel'), 'skills hotkeys panel styles should exist');
 assert(!app.includes('className="skills-title"'), 'skills hotkeys text label should be removed for a compact panel');
-assert(css.includes('.skill-cooldown-wipe') && css.includes('conic-gradient(from -90deg'), 'skills cooldown should use a clock-wipe style radial mask');
+const debugPressSource = app.slice(app.indexOf("if (skillId === 'debug')"), app.indexOf("state.globalSkillCooldown = GLOBAL_SKILL_COOLDOWN"));
+const hotkeyButtonSource = app.slice(app.indexOf('<button\n              key={skill.id}'), app.indexOf('</button>\n          );'));
+assert(!debugPressSource.includes("pulseSkillCountdown('debug')"), 'debug hitbox toggle should not have a cooldown');
+assert(hotkeyButtonSource.includes('skill.art') && hotkeyButtonSource.includes('className="skill-art"') && hotkeyButtonSource.includes('className="skill-label"'), 'skill buttons should show art above text inside the box');
+assert(css.includes('.skill-cooldown-wipe') && css.includes('inset: 0;') && css.includes('conic-gradient(from -90deg') && css.includes('rgba(43, 18, 57'), 'skills cooldown should use a full-button dark radial clock mask starting at 12:00');
 assert(app.includes("'--cooldown-sweep': sweep"), 'skill cooldown wipe should receive live sweep styling');
 assert(app.includes('GLOBAL_SKILL_COOLDOWN = 7') && app.includes('RANDOM_SPECIAL_COOLDOWN = 15'), 'skills should use the planned 7s global cooldown and 15s random special cooldown');
 assert(app.includes('DASH_DURATION = 0.18') && app.includes('DASH_SPEED_MULTIPLIER = 3.2') && app.includes('dashDirection'), 'dash should be a shorter/slower fast dodge roll over time, not an instant teleport');
@@ -105,7 +110,7 @@ assert(!app.includes('DoublePointsCue') && !css.includes('.double-points-cue'), 
 assert(app.includes('doublePointsActive={snapshot.doublePointsActive}') && app.includes("${doublePoints ? 'double-points' : ''}") && css.includes('.basket.double-points'), 'double points should change the basket like other skills');
 const randomSpecialSource = app.slice(app.indexOf('const applyRandomSpecial'), app.indexOf('const canTriggerSkill'));
 assert(app.includes('randomSpecialCueRemaining') && app.includes('RandomSpecialCue') && css.includes('.random-special-cue'), 'random special should show a visual cue for now');
-assert(!randomSpecialSource.includes('state.score +=') && !randomSpecialSource.includes('state.lives =') && !randomSpecialSource.includes('state.items = []') && !randomSpecialSource.includes('state.dodgeActive = true'), 'random special should not change gameplay yet');
+assert(app.includes('applySpecialEffect(randomSpecial.id)') && app.includes('state.starActive = true') && app.includes('state.shieldCharges = Math.max') && app.includes('state.lightningActive = true') && app.includes('state.magnetActive = true'), 'random special and falling specials should trigger live core gameplay effects');
 assert(app.includes('makeConfettiBurst(updated.x + ITEM_SIZE / 2, CATCH_ZONE_TOP + CATCH_ZONE_HEIGHT / 2, state.nextConfettiId, state.doublePointsActive ? 24 : 16)') && css.includes('.confetti-piece.sparkle'), 'candy catches should create bigger confetti/effects, especially during double points');
 assert(app.includes("import { COMBO_TIMEOUT_SECONDS, calculateCatchPoints, formatComboMultiplier } from './game/scoring.js';"), 'game should use shared scoring helpers');
 assert(!app.includes('comboBonus') && app.includes('calculateCatchPoints({') && app.includes('comboIdleRemaining'), 'combo scoring should use percentage helper and track idle timeout');
@@ -113,20 +118,22 @@ assert(app.includes('ComboBreakCue') && app.includes('comboBreakRemaining') && c
 assert(app.includes("formatComboMultiplier(combo)") && !app.includes("combo > 1 ? `x${combo}`"), 'Combo Pop should display multiplier instead of only combo count');
 assert(app.includes("comboBreakLabel = 'Combo timed out!'") && app.includes("comboBreakLabel = 'Combo broke!'"), 'combo timeout and bad catches should both break combo visibly');
 assert(app.includes('disabled={state.disabled}') && app.includes('globalSkillCooldown') && app.includes('randomSpecialCooldown'), 'skill buttons should disable during pause, global cooldown, and random-special cooldown states');
-assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'dash'") && app.includes("id: 'doublePoints'") && app.includes("id: 'randomSpecial'"), 'skills hotkeys should expose dash, shield, double points, and random special');
+assert(app.includes('SKILL_HOTKEYS') && app.includes("id: 'dash'") && app.includes("id: 'doublePoints'") && app.includes("id: 'randomSpecial'") && !app.includes("id: 'debug', keyName: 'H'"), 'skills hotkeys should expose gameplay skills only');
 assert(!app.includes("id: 'frenzy'") && !app.includes("id: 'magnet'") && !app.includes("id: 'boost'"), 'old boost/magnet/frenzy placeholder skills should be removed');
 assert(app.includes("key === 'c'") && app.includes("key === 'v'") && app.includes("handleSkillPress('doublePoints')") && app.includes("handleSkillPress('randomSpecial')"), 'new skill hotkeys should respond from keyboard');
 assert(app.includes('skillPressTimers'), 'clicking a skill should show a countdown timer');
 assert(!app.includes('function AbilityPanel'), 'old bottom skills panels should be removed');
-assert(css.includes('/* Skills: no outer panel */') && css.includes('border-radius: 14px') && css.includes('conic-gradient(from -90deg'), 'skill UI should remove the outer panel, use rounded-square buttons, and start cooldown at 12:00');
+assert(css.includes('/* Skills: no outer panel */') && css.includes('border-radius: 14px') && css.includes('linear-gradient(180deg, #fff46b, #ffb000)') && css.includes('conic-gradient(from -90deg'), 'skill UI should use yellow rounded-square buttons with cooldown radial starting at 12:00');
 assert(css.includes('.debug-hitbox::after'), 'debug hitboxes should display labels');
 assert(app.includes('function HeartsDisplay'), 'hearts should be shown below the timer');
 assert(app.includes('className={`stat-card timer-card hero-timer ${timerMood}`}') && css.includes('.stat-card.hero-timer .hearts-display'), 'hearts should be centered inside the rush clock panel below the timer');
 assert(css.includes('grid-template-columns: minmax(150px, 188px) max-content minmax(150px, 188px)') && css.includes('width: max-content;') && css.includes('.score-card'), 'HUD should hug the Rush Clock contents, narrow side cards, and align Sugar Score right');
 assert(css.includes('.heart-row b') && css.includes('background: transparent;') && css.includes('box-shadow: none;') && css.includes('font-size: 1.62rem'), 'hearts should render as enlarged standalone hearts without containers');
+assert(app.includes('ADVENTURE_DURATION_SECONDS') && app.includes('getDifficultyConfig(state.elapsed)') && app.includes('difficulty.spawnDelay'), 'Adventure should use the shared 10-minute difficulty config for timer and spawning');
 assert(app.includes('timeLeft: 0,') && app.includes("finishGame('Time is up!')"), 'timer finish path should snapshot 0s before showing game-over hold');
 assert(css.includes('/* Top leaderboard ranks: medal-like rows, crown kept inside bounds */') && css.includes('.leaderboard-list li.rank-2') && css.includes('linear-gradient(90deg, #f7f7fb') && css.includes('.main-menu-layout .leaderboard-card'), 'leaderboard should preserve top-three effects and main-menu scroll sizing');
 assert(css.includes('.timer-heart-stack') && css.includes('.hero-timer'), 'timer should be the top-most central HUD element');
+assert(app.includes('elapsed: state.elapsed') && app.includes('const shownTime = Math.floor(elapsed);') && !app.includes('const shownTime = Math.ceil(timeLeft);'), 'Rush Clock should count up from elapsed seconds instead of counting down');
 assert(app.includes('const BASKET_BOTTOM_OFFSET = 8;'), 'basket should be moved down slightly');
 assert(app.includes('const BASKET_HEIGHT = 54;'), 'basket should be flatter than the old design');
 assert(app.includes('READY_COUNTDOWN_SECONDS = 3'), 'game should use a 3-second ready countdown');

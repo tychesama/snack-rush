@@ -1137,18 +1137,19 @@ h1 {
   --cooldown-sweep: 0deg;
   position: relative;
   overflow: hidden;
-  width: 48px;
-  height: 48px;
+  width: 62px;
+  height: 62px;
   display: grid;
+  grid-template-rows: 1fr auto;
   place-items: center;
-  gap: 0;
-  padding: 4px;
+  gap: 2px;
+  padding: 6px 5px 5px;
   border: 3px solid #2b1239;
   border-radius: 14px;
   color: #2b1239;
   background:
     radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.92) 0 5px, transparent 6px),
-    linear-gradient(180deg, #31d6ff, #7aebff);
+    linear-gradient(180deg, #fff46b, #ffb000);
   box-shadow: 0 4px 0 #2b1239, 0 0 12px rgba(255, 255, 255, 0.3);
   font-weight: 950;
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, opacity 120ms ease;
@@ -1156,11 +1157,11 @@ h1 {
 
 .skill-cooldown-wipe {
   position: absolute;
-  inset: 4px;
-  border-radius: 10px;
+  inset: 0;
+  border-radius: inherit;
   background:
-    conic-gradient(from -90deg, rgba(27, 10, 37, 0.88) 0deg var(--cooldown-sweep), transparent var(--cooldown-sweep) 360deg),
-    radial-gradient(circle at center, rgba(43, 18, 57, 0.18) 0 54%, transparent 55%);
+    conic-gradient(from -90deg, rgba(43, 18, 57, 0.66) 0deg var(--cooldown-sweep), transparent var(--cooldown-sweep) 360deg),
+    radial-gradient(circle at center, rgba(43, 18, 57, 0.1) 0 34%, rgba(43, 18, 57, 0.24) 35% 100%);
   opacity: 0;
   transition: opacity 120ms ease;
 }
@@ -1175,15 +1176,17 @@ h1 {
   cursor: not-allowed;
 }
 
-.skill-hotkey.active {
-  background:
-    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.95) 0 5px, transparent 6px),
-    linear-gradient(180deg, #fff46b, #ffb000);
-  animation: skillCountdownPulse 540ms ease-in-out infinite alternate;
+.skill-hotkey.cooldown {
+  color: #2b1239;
+  box-shadow: 0 4px 0 #2b1239, inset 0 0 0 2px rgba(43, 18, 57, 0.18);
+  filter: saturate(0.78) brightness(0.82);
 }
 
-.skill-hotkey.active .skill-cooldown-wipe,
-.skill-hotkey:disabled .skill-cooldown-wipe {
+.skill-hotkey.active:not(.cooldown) {
+  box-shadow: 0 4px 0 #2b1239, 0 0 14px rgba(105, 255, 159, 0.5);
+}
+
+.skill-hotkey.cooldown .skill-cooldown-wipe {
   opacity: 1;
 }
 
@@ -1192,32 +1195,32 @@ h1 {
   filter: grayscale(0.12);
 }
 
-.skill-hotkey kbd,
-.skill-hotkey small {
+.skill-art,
+.skill-label {
   position: relative;
   z-index: 1;
 }
 
-.skill-hotkey kbd {
-  font: inherit;
-  font-size: 1.05rem;
+.skill-art {
+  display: grid;
+  place-items: center;
+  align-self: end;
+  min-height: 30px;
+  font-size: 1.55rem;
   line-height: 1;
+  filter: drop-shadow(0 2px 0 rgba(43, 18, 57, 0.28));
 }
 
-.skill-hotkey small {
-  position: absolute;
-  left: 50%;
-  bottom: 5px;
-  transform: translateX(-50%);
-  min-width: 29px;
+.skill-label {
+  align-self: end;
+  max-width: 100%;
   padding: 1px 3px;
-  border-radius: 999px;
-  color: #fff;
-  background: #2b1239;
-  font-size: 0.48rem;
-  line-height: 1;
-  letter-spacing: 0;
+  color: #17203a;
+  font-size: 0.5rem;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .gameover-hold-overlay {

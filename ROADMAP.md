@@ -275,18 +275,20 @@ Goal: Make runs ramp up in intensity and add readable event moments.
 
 ## Tasks
 
-- [ ] Define difficulty levels and how they are calculated.
-- [ ] Tie spawn interval to difficulty.
-- [ ] Tie falling speed to difficulty.
-- [ ] Tie bad item chance to difficulty.
-- [ ] Tie special item chance to difficulty.
+- [x] Define difficulty levels and how they are calculated.
+- [x] Tie spawn interval to difficulty.
+- [x] Tie falling speed to difficulty.
+- [x] Tie bad item chance to difficulty.
+- [x] Tie special item chance to difficulty.
+- [x] Tie item drift / chaos and max on-screen items to difficulty.
 - [ ] Add storm schedule/config.
 - [ ] Add storm warning UI.
 - [ ] Add storm active UI.
 - [ ] Add storm end feedback.
 - [ ] Tune storm spawn pressure.
-- [ ] Add tests for difficulty and storm schedule.
-- [ ] Update README.
+- [x] Add tests for difficulty helpers.
+- [ ] Add tests for storm schedule when storms are implemented.
+- [x] Update README.
 
 ## Acceptance criteria
 

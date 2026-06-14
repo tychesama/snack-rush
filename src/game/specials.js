@@ -3,73 +3,60 @@
  * Defines the special items available in SnackRush.
  */
 
-/**
- * TYPES of special items.
- * They are distinct from normal candy and 'bad' food.
- */
 export const SPECIAL_TYPES = {
   STAR: 'star',
   MAGNET: 'magnet',
   NUKE: 'nuke',
   SHIELD: 'shield',
   LIGHTNING: 'lightning',
-  HEART: 'heart'
+  HEART: 'heart',
 };
 
-/**
- * The source of truth for special items.
- */
 export const SPECIAL_ITEMS = {
   [SPECIAL_TYPES.STAR]: {
-    id: 'star_invincibility',
+    id: SPECIAL_TYPES.STAR,
     label: 'Star',
     icon: '⭐',
-    desc: 'Invincibility for 5 seconds.',
-    type: 'protection'
+    description: 'Temporary invincibility.',
+    effectType: 'invincibility',
   },
   [SPECIAL_TYPES.MAGNET]: {
-    id: 'magnet_pull',
+    id: SPECIAL_TYPES.MAGNET,
     label: 'Magnet',
     icon: '🧲',
-    desc: 'Pull items closer for 3 seconds.',
-    type: 'utility'
+    description: 'Pulls helpful items toward the basket.',
+    effectType: 'item-pull',
   },
   [SPECIAL_TYPES.NUKE]: {
-    id: 'nuke_clear',
+    id: SPECIAL_TYPES.NUKE,
     label: 'Nuke',
     icon: '💣',
-    desc: 'Clear all objects from the screen.',
-    type: 'cleansing'
+    description: 'Clears the current screen.',
+    effectType: 'screen-clear',
   },
   [SPECIAL_TYPES.SHIELD]: {
-    id: 'shield_block',
+    id: SPECIAL_TYPES.SHIELD,
     label: 'Shield',
     icon: '🛡️',
-    desc: 'Block one hit without losing a point.',
-    type: 'protection'
+    description: 'Blocks one rotten hit.',
+    effectType: 'block-hit',
   },
   [SPECIAL_TYPES.LIGHTNING]: {
-    id: 'lightning_speed',
+    id: SPECIAL_TYPES.LIGHTNING,
     label: 'Lightning',
     icon: '⚡',
-    desc: 'Movement speed boost for 7 seconds.',
-    type: 'movement'
+    description: 'Temporarily boosts movement speed.',
+    effectType: 'movement-boost',
   },
   [SPECIAL_TYPES.HEART]: {
-    id: 'heart_life',
+    id: SPECIAL_TYPES.HEART,
     label: 'Heart',
     icon: '❤️',
-    desc: 'Instant heart refill.',
-    type: 'healing'
-  }
+    description: 'Restores one heart.',
+    effectType: 'healing',
+  },
 };
 
-/**
- * Helper to get a specific special by its type.
- */
-export const getSpecialById = (type) => SPECIAL_ITEMS[type];
+export const getSpecialById = (id) => SPECIAL_ITEMS[id];
 
-/**
- * Returns all available specialties for UI lists or generation.
- */
 export const getAllSpecials = () => Object.values(SPECIAL_ITEMS);

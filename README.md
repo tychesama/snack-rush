@@ -125,24 +125,18 @@ This list comes from `NEWEST UPDATE.txt` and should drive the next work sessions
 
 ### 1. Add the special item system
 
-Special items should become a clear gameplay layer, not just generic bonus treats.
+Special items are now a gameplay layer. They currently reuse the existing bonus-item visual treatment so design can be refined later without blocking core gameplay.
 
-Planned specials may include:
+Current specials:
 
-- Star / invincibility
-- Magnet / pull helpful items closer
-- Nuke / clear the screen
-- Shield / block one bad hit
-- Lightning / movement boost
-- Heart / regain life
+- Star: temporary invincibility.
+- Magnet: pulls helpful items closer.
+- Nuke: clears the current screen.
+- Shield: blocks one rotten hit.
+- Lightning: temporary movement boost.
+- Heart: restores one life up to the starting max.
 
-Special items need:
-
-- Distinct icons or emoji
-- Unique visual styling while falling
-- Clear effects when caught
-- HUD/status feedback when active
-- Tests or source checks for the item catalog and behavior
+Specials still need later UI/status polish, but their catalog and core effects are live.
 
 ### 2. Rebalance skills
 
@@ -207,7 +201,7 @@ Current mode picker:
 
 - Playable now
 - Main structured SnackRush run
-- Timer pressure, skills, specials, combo scoring, and snack storms
+- 10-minute timer pressure, skills, specials, combo scoring, and difficulty scaling
 - Current default serious scoring mode
 
 #### Timed Rush
@@ -225,16 +219,16 @@ Each mode should clearly show:
 
 ### 6. Check and tune difficulty curve and snack storms
 
-Difficulty and storms are work in progress.
+Core difficulty scaling is live for Adventure Mode. Snack storms are intentionally later.
 
-Difficulty should affect:
+Difficulty currently affects:
 
 - Falling speed
 - Spawn rate
 - Bad item frequency
 - Special item frequency
-- Candy/item size or value, if implemented
-- Overall chaos level
+- Item drift / chaos level
+- Maximum items allowed on screen
 
 Snack storms should be readable event moments, not random confusion.
 
